@@ -4,7 +4,7 @@
       "key": "all",
       "label": "全ポケモン全わざ",
       "file": "mode_all.json",
-      "count": 1318
+      "count": 1306
     },
     {
       "key": "gen1",
@@ -46,7 +46,7 @@
       "key": "gen7",
       "label": "7世代",
       "file": "mode_gen7.json",
-      "count": 938
+      "count": 928
     },
     {
       "key": "pikabui",

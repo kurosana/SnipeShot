@@ -14,6 +14,10 @@ PokeAPI CSV -> ねらいうちゲーム用 JSON ビルドスクリプト
 
 覚える技の引き継ぎ:
   - フォルム進化グラフの親ノードを辿り、進化前の技をすべて引き継ぐ
+
+トーテムフォルム:
+  - identifier / form_identifier に "totem" を含むフォルムはゲーム対象外
+  - 進化グラフ・候補プール・エントリ生成から除外
 """
 from __future__ import annotations
 
@@ -71,6 +75,13 @@ def to_int(v: str | None, default: int = 0) -> int:
     return int(v)
 
 
+def is_totem_form(identifier: str, form_identifier: str) -> bool:
+    for value in (identifier, form_identifier):
+        if "totem" in value.split("-"):
+            return True
+    return False
+
+
 def build_form_evolution_graph(
     evolution_rows: list[dict[str, str]],
     evolves_from: dict[int, int],
@@ -81,6 +92,7 @@ def build_form_evolution_graph(
     form_is_mega: dict[int, bool],
     form_is_battle_only: dict[int, bool],
     species_switchable: dict[int, bool],
+    totem_pokemon: set[int],
 ) -> tuple[
     dict[int, list[int]],
     dict[int, list[int]],
@@ -120,6 +132,8 @@ def build_form_evolution_graph(
         evolved_pid = to_int(row.get("evolved_form_id") or "") or default_pokemon.get(child_sid)
         if base_pid is None or evolved_pid is None:
             continue
+        if base_pid in totem_pokemon or evolved_pid in totem_pokemon:
+            continue
 
         parent_node = node_of(base_pid)
         child_node = node_of(evolved_pid)
@@ -145,7 +159,7 @@ def build_form_evolution_graph(
 
     pid_to_node: dict[int, int] = {}
     pid_to_lines: dict[int, list[int]] = {}
-    all_pids = set(pokemon_species.keys())
+    all_pids = set(pokemon_species.keys()) - totem_pokemon
     for pid in all_pids:
         node = node_of(pid)
         pid_to_node[pid] = node
@@ -197,6 +211,7 @@ def main() -> None:
     form_is_default: dict[int, bool] = {}
     form_is_mega: dict[int, bool] = {}
     form_is_battle_only: dict[int, bool] = {}
+    totem_pokemon: set[int] = set()
     for row in read_csv("pokemon_forms.csv"):
         fid = to_int(row["id"])
         pid = to_int(row["pokemon_id"])
@@ -205,6 +220,11 @@ def main() -> None:
         form_is_default[pid] = to_int(row.get("is_default", "0")) == 1
         form_is_mega[pid] = to_int(row.get("is_mega", "0")) == 1
         form_is_battle_only[pid] = to_int(row.get("is_battle_only", "0")) == 1
+        if is_totem_form(
+            (row.get("identifier") or "").strip(),
+            (row.get("form_identifier") or "").strip(),
+        ):
+            totem_pokemon.add(pid)
 
     form_evo_participants: set[int] = set()
     for row in evolution_rows:
@@ -225,6 +245,7 @@ def main() -> None:
         form_is_mega,
         form_is_battle_only,
         species_switchable,
+        totem_pokemon,
     )
 
     form_fullname_ja: dict[int, str] = {}
@@ -387,6 +408,8 @@ def main() -> None:
         species_set: set[int] = set()
         for vg in vgs:
             for pid in moves_by_vg[vg]:
+                if pid in totem_pokemon:
+                    continue
                 sid = pokemon_species.get(pid)
                 if sid and sid in default_pokemon:
                     species_set.add(sid)
@@ -394,10 +417,12 @@ def main() -> None:
 
     def candidate_pids_for_species(sid: int, vgs: list[int] | None) -> list[int]:
         if vgs is None:
-            return species_to_pids.get(sid, [])
+            return [pid for pid in species_to_pids.get(sid, []) if pid not in totem_pokemon]
         found: set[int] = set()
         for vg in vgs:
             for pid in moves_by_vg[vg]:
+                if pid in totem_pokemon:
+                    continue
                 if pokemon_species.get(pid) == sid:
                     found.add(pid)
         return sorted(found)
@@ -489,6 +514,7 @@ def main() -> None:
     with (OUT_DIR / "index.json").open("w", encoding="utf-8") as f:
         json.dump(index, f, ensure_ascii=False, indent=2)
 
+    print(f"Excluded {len(totem_pokemon)} totem forms")
     print(f"Done. {len(available_modes)} modes written to {OUT_DIR}")
 
 
