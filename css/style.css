@@ -355,28 +355,18 @@ body {
   gap: 0.25rem;
 }
 
-.btn-debug {
+.btn-cheat {
   color: var(--text-muted);
-  font-size: 0.68rem;
+  font-size: 0.62rem;
 }
 
-.btn-debug:hover,
-.btn-debug.active {
+.btn-cheat:hover,
+.btn-cheat.active {
   color: var(--text);
   background: var(--btn-secondary);
 }
 
-.btn-debug.active {
-  border-color: var(--btn-primary);
-}
-
-.btn-surrender:hover,
-.btn-surrender.active {
-  color: var(--text);
-  background: var(--btn-secondary);
-}
-
-.btn-surrender.active {
+.btn-cheat.active {
   border-color: var(--btn-primary);
 }
 

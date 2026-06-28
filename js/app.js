@@ -513,10 +513,8 @@
     state.hits = [];
     state.answerPreview = false;
     state.remainingSec = state.timeSec;
-    const btnDebug = $("#btn-debug");
-    const btnSurrender = $("#btn-surrender");
-    if (btnDebug) btnDebug.classList.remove("active");
-    if (btnSurrender) btnSurrender.classList.remove("active");
+    const btnCheat = $("#btn-cheat");
+    if (btnCheat) btnCheat.classList.remove("active");
     $("#result-summary").hidden = false;
     $("#result-answer").hidden = true;
     renderConditions();
@@ -563,10 +561,8 @@
     hideDuelUI();
     state.duelRevealed = true;
     state.answerPreview = false;
-    const btnDebug = $("#btn-debug");
-    const btnSurrender = $("#btn-surrender");
-    if (btnDebug) btnDebug.classList.remove("active");
-    if (btnSurrender) btnSurrender.classList.remove("active");
+    const btnCheat = $("#btn-cheat");
+    if (btnCheat) btnCheat.classList.remove("active");
     renderAnswerList();
     $("#btn-reveal").hidden = true;
   }
@@ -574,28 +570,14 @@
   function toggleAnswerPreview() {
     if (state.duelRevealed) return;
     state.answerPreview = !state.answerPreview;
-    const btnDebug = $("#btn-debug");
-    const btnSurrender = $("#btn-surrender");
+    const btnCheat = $("#btn-cheat");
     if (state.answerPreview) {
       refreshResults();
       renderAnswerList();
-      btnDebug?.classList.add("active");
-      btnSurrender?.classList.add("active");
+      btnCheat?.classList.add("active");
     } else {
       hideAnswerList();
-      btnDebug?.classList.remove("active");
-      btnSurrender?.classList.remove("active");
-    }
-  }
-
-  async function checkLocalDebugMode() {
-    const btnDebug = $("#btn-debug");
-    if (!btnDebug) return;
-    try {
-      const res = await fetch("local.debug", { method: "HEAD", cache: "no-store" });
-      if (res.ok) btnDebug.hidden = false;
-    } catch (_) {
-      /* local file absent */
+      btnCheat?.classList.remove("active");
     }
   }
 
@@ -613,10 +595,6 @@
     const ov = $("#overlay-rules");
     ov.classList.remove("active");
     ov.setAttribute("aria-hidden", "true");
-  }
-
-  function surrender() {
-    toggleAnswerPreview();
   }
 
   function applyTheme(colors) {
@@ -689,7 +667,6 @@
     try {
       await loadAppConfig();
       await DataStore.init();
-      await checkLocalDebugMode();
       populateGenerationSelect();
       showScreen("start");
     } catch (e) {
@@ -732,7 +709,7 @@
     if (ok) resetGame();
   });
 
-  $("#btn-debug").addEventListener("click", toggleAnswerPreview);
+  $("#btn-cheat").addEventListener("click", toggleAnswerPreview);
 
   $("#btn-exit").addEventListener("click", async () => {
     const ok = await confirmDialog("ゲームを終了してスタート画面に戻りますか？");
@@ -750,7 +727,6 @@
   $("#overlay-rules").addEventListener("click", (e) => {
     if (e.target === $("#overlay-rules")) closeRulesOverlay();
   });
-  $("#btn-surrender").addEventListener("click", surrender);
 
   $("#btn-close-type").addEventListener("click", closeTypePicker);
   $("#overlay-type").addEventListener("click", (e) => {
