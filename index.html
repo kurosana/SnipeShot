@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>ねらいうちゲーム</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- スタート画面 -->
+    <section id="screen-start" class="screen active">
+      <div class="app-version-wrap" id="app-version-wrap">
+        <span class="app-version" id="app-version"></span>
+        <span class="app-version app-release-notes" id="app-release-notes" hidden></span>
+      </div>
+      <div class="start-inner">
+        <h1 class="app-title" id="app-title">ねらいうちゲーム</h1>
+        <div class="rules-box" id="rules-box"></div>
+        <button type="button" class="btn-primary btn-start-large" id="btn-to-setup">スタート</button>
+      </div>
+    </section>
+
+    <!-- ルール選択画面 -->
+    <section id="screen-setup" class="screen">
+      <button type="button" class="btn-back-setup" id="btn-back-start">戻る</button>
+      <div class="setup-inner">
+        <h1 class="setup-title">ルール選択</h1>
+        <div class="mode-buttons">
+          <button type="button" class="btn-mode btn-mode-all" id="btn-mode-all">全ポケモン全わざ</button>
+          <div class="mode-gen-wrap">
+            <button type="button" class="btn-mode btn-mode-gen" id="btn-mode-gen">世代指定</button>
+            <select id="select-generation" class="select-generation" aria-label="世代を選択">
+              <!-- JS で生成 -->
+            </select>
+          </div>
+        </div>
+        <div class="time-select-wrap">
+          <label for="select-time" class="time-label">一騎打ちの制限時間</label>
+          <select id="select-time" class="select-time">
+            <option value="30">30秒</option>
+            <option value="60" selected>1分</option>
+            <option value="90">1分半</option>
+            <option value="120">2分</option>
+            <option value="150">2分半</option>
+            <option value="180">3分</option>
+          </select>
+        </div>
+        <div class="setup-actions">
+          <button type="button" class="btn-start-setup" id="btn-start-setup" hidden>開始</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ゲーム画面 -->
+    <section id="screen-game" class="screen">
+      <header class="banner-zone" id="banner-zone">
+        <div class="banner-actions-left">
+          <button type="button" class="btn-banner btn-restart" id="btn-restart">もう一度</button>
+          <button type="button" class="btn-banner btn-debug" id="btn-debug" hidden>デバッグ</button>
+        </div>
+        <div class="banner-center" id="banner-center">
+          <div class="banner-title-row" id="banner-title-row">
+            <h1 class="banner-title" id="banner-title">ねらいうちゲーム</h1>
+            <button type="button" class="btn-rules-help" id="btn-rules-help" aria-label="ルール説明">？</button>
+          </div>
+          <div class="banner-duel-row" id="banner-duel-row" hidden>
+            <p class="banner-timer" id="banner-timer"></p>
+            <button type="button" class="btn-cancel-duel" id="btn-cancel-duel" hidden>一騎打ち解除</button>
+          </div>
+        </div>
+        <div class="banner-actions-right">
+          <button type="button" class="btn-banner btn-surrender" id="btn-surrender">降参</button>
+          <button type="button" class="btn-banner btn-exit" id="btn-exit">終了</button>
+        </div>
+      </header>
+
+      <div class="main-zone" id="main-zone">
+        <div class="conditions-wrap">
+          <table class="conditions-table" id="conditions-table">
+            <thead>
+              <tr>
+                <th class="col-no">#</th>
+                <th class="col-kind">種別</th>
+                <th class="col-value">内容</th>
+                <th class="col-op">条件</th>
+                <th class="col-actions"></th>
+              </tr>
+            </thead>
+            <tbody id="conditions-body"></tbody>
+          </table>
+          <button type="button" class="btn-add-condition" id="btn-add-condition">＋ 条件を追加</button>
+        </div>
+      </div>
+
+      <footer class="result-zone" id="result-zone">
+        <div class="result-summary" id="result-summary">
+          <p class="result-line">
+            <span class="result-label">該当ポケモンは</span>
+            <span class="result-count" id="result-count">0</span>
+            <span class="result-label">匹</span>
+          </p>
+          <p class="result-line">
+            <span class="result-label">うち進化・フォルムラインは</span>
+            <span class="result-lines" id="result-lines">0</span>
+            <span class="result-label">ライン</span>
+          </p>
+        </div>
+        <div class="result-answer" id="result-answer" hidden></div>
+        <button type="button" class="btn-reveal" id="btn-reveal" hidden>解答発表</button>
+      </footer>
+    </section>
+
+    <!-- ローディング -->
+    <section id="screen-loading" class="screen">
+      <p class="loading-text">読み込み中…</p>
+    </section>
+  </div>
+
+  <!-- 確認ダイアログ -->
+  <div id="dialog-confirm" class="dialog" aria-hidden="true">
+    <div class="dialog-backdrop"></div>
+    <div class="dialog-box">
+      <p class="dialog-message" id="dialog-message"></p>
+      <div class="dialog-actions">
+        <button type="button" class="btn-dialog btn-dialog-yes" id="dialog-yes">はい</button>
+        <button type="button" class="btn-dialog btn-dialog-no" id="dialog-no">いいえ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- タイプ選択 -->
+  <div id="overlay-type" class="overlay" aria-hidden="true">
+    <div class="overlay-inner type-overlay-inner">
+      <div class="overlay-header">
+        <h2 class="overlay-title">タイプを選択</h2>
+        <button type="button" class="btn-close-overlay" id="btn-close-type">閉じる</button>
+      </div>
+      <div class="type-list" id="type-list"></div>
+    </div>
+  </div>
+
+  <!-- わざ・特性検索 -->
+  <div id="overlay-search" class="overlay" aria-hidden="true">
+    <div class="overlay-inner search-overlay-inner">
+      <div class="search-header">
+        <input type="search" id="search-input" placeholder="検索" autocomplete="off">
+        <button type="button" class="btn-close-overlay" id="btn-close-search">閉じる</button>
+      </div>
+      <div class="search-results" id="search-results"></div>
+    </div>
+  </div>
+
+  <!-- ルール説明 -->
+  <div id="overlay-rules" class="overlay" aria-hidden="true">
+    <div class="overlay-inner rules-overlay-inner">
+      <div class="overlay-header">
+        <h2 class="overlay-title">ルール</h2>
+        <button type="button" class="btn-close-overlay" id="btn-close-rules">閉じる</button>
+      </div>
+      <div class="rules-box rules-box-overlay" id="rules-overlay-body"></div>
+    </div>
+  </div>
+
+  <!-- 一騎打ちポップアップ -->
+  <div id="overlay-duel" class="overlay overlay-duel" aria-hidden="true">
+    <div class="duel-popup">
+      <img src="Img/ikkiuti.png" alt="一騎打ち" class="duel-image" id="duel-image">
+      <p class="duel-timer" id="duel-timer">1:00</p>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/filter.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

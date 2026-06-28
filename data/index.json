@@ -1,0 +1,97 @@
+{
+  "modes": [
+    {
+      "key": "all",
+      "label": "全ポケモン全わざ",
+      "file": "mode_all.json",
+      "count": 1298
+    },
+    {
+      "key": "gen1",
+      "label": "1世代",
+      "file": "mode_gen1.json",
+      "count": 151
+    },
+    {
+      "key": "gen2",
+      "label": "2世代",
+      "file": "mode_gen2.json",
+      "count": 251
+    },
+    {
+      "key": "gen3",
+      "label": "3世代",
+      "file": "mode_gen3.json",
+      "count": 388
+    },
+    {
+      "key": "gen4",
+      "label": "4世代",
+      "file": "mode_gen4.json",
+      "count": 505
+    },
+    {
+      "key": "gen5",
+      "label": "5世代",
+      "file": "mode_gen5.json",
+      "count": 663
+    },
+    {
+      "key": "gen6",
+      "label": "6世代",
+      "file": "mode_gen6.json",
+      "count": 743
+    },
+    {
+      "key": "gen7",
+      "label": "7世代",
+      "file": "mode_gen7.json",
+      "count": 851
+    },
+    {
+      "key": "pikabui",
+      "label": "ピカブイ",
+      "file": "mode_pikabui.json",
+      "count": 173
+    },
+    {
+      "key": "gen8",
+      "label": "8世代",
+      "file": "mode_gen8.json",
+      "count": 710
+    },
+    {
+      "key": "bdsp",
+      "label": "BDSP",
+      "file": "mode_bdsp.json",
+      "count": 490
+    },
+    {
+      "key": "arceus",
+      "label": "アルセウス",
+      "file": "mode_arceus.json",
+      "count": 247
+    },
+    {
+      "key": "gen9",
+      "label": "9世代",
+      "file": "mode_gen9.json",
+      "count": 822
+    },
+    {
+      "key": "champions",
+      "label": "チャンピオンズ",
+      "file": "mode_champions.json",
+      "count": 212
+    }
+  ],
+  "stats": [
+    "hp",
+    "atk",
+    "def",
+    "spa",
+    "spd",
+    "spe",
+    "tot"
+  ]
+}

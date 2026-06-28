@@ -1,0 +1,35 @@
+# ============================================
+# ねらいうちゲーム .gitignore
+# ============================================
+
+# ローカル開発用
+start.bat
+local.debug
+
+# 秘密情報
+.env
+.env.*
+*.pem
+*.key
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# エディタ
+.vscode/
+.idea/
+*.swp
+*~
+
+# Node
+node_modules/
+npm-debug.log*
+
+# 不要フォルダ
+Trush/
+
+# 一時ファイル
+*.tmp
+*.bak

@@ -1,0 +1,19 @@
+{
+  "version": "v1.1.0",
+  "releaseNotes": "",
+  "appTitle": "ねらいうちゲーム",
+  "rulesHtml": "<p>一人ずつ順番に、ポケモンを絞り込む条件を指定します。</p><ul><li>タイプ（持つ / 持たない）</li><li>特性（持つ / 持たない）</li><li>わざ（覚える / 覚えない）</li><li>種族値（以上 / 以下）</li></ul><p>条件を満たすポケモンが2種類に絞り込まれたら一騎打ち！<br>話し合って2匹を当てよう。</p>",
+  "colors": {
+    "bg": "#f0f9ff",
+    "btnPrimary": "#38bdf8",
+    "btnPrimaryHover": "#0ea5e9",
+    "btnSecondary": "#bae6fd",
+    "btnSecondaryHover": "#7dd3fc",
+    "btnPressed": "#0284c7",
+    "text": "#0c4a6e",
+    "textMuted": "#0369a1",
+    "placeholder": "#7dd3fc",
+    "border": "#bae6fd",
+    "danger": "#dc2626"
+  }
+}
