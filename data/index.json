@@ -4,7 +4,7 @@
       "key": "all",
       "label": "全ポケモン全わざ",
       "file": "mode_all.json",
-      "count": 1298
+      "count": 1318
     },
     {
       "key": "gen1",
@@ -22,49 +22,49 @@
       "key": "gen3",
       "label": "3世代",
       "file": "mode_gen3.json",
-      "count": 388
+      "count": 391
     },
     {
       "key": "gen4",
       "label": "4世代",
       "file": "mode_gen4.json",
-      "count": 505
+      "count": 508
     },
     {
       "key": "gen5",
       "label": "5世代",
       "file": "mode_gen5.json",
-      "count": 663
+      "count": 672
     },
     {
       "key": "gen6",
       "label": "6世代",
       "file": "mode_gen6.json",
-      "count": 743
+      "count": 810
     },
     {
       "key": "gen7",
       "label": "7世代",
       "file": "mode_gen7.json",
-      "count": 851
+      "count": 938
     },
     {
       "key": "pikabui",
       "label": "ピカブイ",
       "file": "mode_pikabui.json",
-      "count": 173
+      "count": 188
     },
     {
       "key": "gen8",
       "label": "8世代",
       "file": "mode_gen8.json",
-      "count": 710
+      "count": 736
     },
     {
       "key": "bdsp",
       "label": "BDSP",
       "file": "mode_bdsp.json",
-      "count": 490
+      "count": 491
     },
     {
       "key": "arceus",
@@ -76,13 +76,13 @@
       "key": "gen9",
       "label": "9世代",
       "file": "mode_gen9.json",
-      "count": 822
+      "count": 836
     },
     {
       "key": "champions",
       "label": "チャンピオンズ",
       "file": "mode_champions.json",
-      "count": 212
+      "count": 279
     }
   ],
   "stats": [

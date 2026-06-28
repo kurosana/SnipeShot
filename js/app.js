@@ -216,7 +216,7 @@
     $("#result-count").textContent = String(count);
     $("#result-lines").textContent = String(evoFormLines);
 
-    if (state.answerPreview && !state.duelRevealed) {
+    if (state.answerPreview) {
       renderAnswerList();
     }
 
@@ -528,6 +528,8 @@
     state.modeLabel = modeLabel;
     state.timeSec = Number($("#select-time").value);
     resetGame();
+    const bannerTitle = $("#banner-title");
+    if (bannerTitle) bannerTitle.textContent = modeLabel;
     showScreen("game");
   }
 
@@ -550,9 +552,7 @@
 
   function hideAnswerList() {
     $("#result-answer").hidden = true;
-    if (!state.duelRevealed) {
-      $("#result-summary").hidden = false;
-    }
+    $("#result-summary").hidden = false;
   }
 
   function revealAnswer() {
@@ -568,7 +568,6 @@
   }
 
   function toggleAnswerPreview() {
-    if (state.duelRevealed) return;
     state.answerPreview = !state.answerPreview;
     const btnCheat = $("#btn-cheat");
     if (state.answerPreview) {
@@ -625,8 +624,6 @@
       document.title = cfg.appTitle;
       const titleEl = $("#app-title");
       if (titleEl) titleEl.textContent = cfg.appTitle;
-      const bannerTitle = $("#banner-title");
-      if (bannerTitle) bannerTitle.textContent = cfg.appTitle;
     }
     if (cfg.rulesHtml) {
       CONFIG.rulesHtml = cfg.rulesHtml;

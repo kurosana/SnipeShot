@@ -1,12 +1,15 @@
 /**
  * 絞り込みロジック
  *
- * 進化・フォルムライン: 同一 evolution_chain_id で1グループ（進化段階・メガ/フォルム問わず）
- * 一騎打ち判定: 該当ポケモンに含まれる進化・フォルムラインの数が2のとき
+ * 進化・フォルムライン: 各エントリの e（リーフノード id の配列）でグループ化。
+ * 分岐進化では共有の進化元が複数ラインに所属しうる。
+ * 一騎打ち判定: 該当ポケモンに含まれるユニークなライン数が2のとき
  */
 const FilterEngine = {
-  evoFormLineKey(p) {
-    return String(p.e);
+  lineIds(p) {
+    const e = p.e;
+    if (Array.isArray(e)) return e;
+    return e != null ? [e] : [];
   },
 
   applyAll(pokemon, conditions) {
@@ -61,25 +64,29 @@ const FilterEngine = {
   },
 
   countResults(hits) {
+    const lineSet = new Set();
     const byLine = new Map();
     for (const p of hits) {
-      const lineKey = this.evoFormLineKey(p);
-      if (!byLine.has(lineKey)) byLine.set(lineKey, []);
-      byLine.get(lineKey).push(p);
+      for (const lineId of this.lineIds(p)) {
+        lineSet.add(lineId);
+        if (!byLine.has(lineId)) byLine.set(lineId, []);
+        byLine.get(lineId).push(p);
+      }
     }
     let evoFormLines = 0;
     for (const group of byLine.values()) {
       if (group.length >= 2) evoFormLines += 1;
     }
-    return { count: hits.length, evoFormLines, lines: byLine.size };
+    return { count: hits.length, evoFormLines, lines: lineSet.size };
   },
 
   groupByEvoFormLine(hits) {
     const byLine = new Map();
     for (const p of hits) {
-      const key = this.evoFormLineKey(p);
-      if (!byLine.has(key)) byLine.set(key, []);
-      byLine.get(key).push(p);
+      for (const lineId of this.lineIds(p)) {
+        if (!byLine.has(lineId)) byLine.set(lineId, []);
+        byLine.get(lineId).push(p);
+      }
     }
     return [...byLine.values()].map((group) =>
       group.sort((a, b) => a.i - b.i).map((p) => p.n)

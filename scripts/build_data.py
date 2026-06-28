@@ -3,15 +3,17 @@
 """
 PokeAPI CSV -> ねらいうちゲーム用 JSON ビルドスクリプト
 
-メガシンカ・フォルムチェンジ:
-  - デフォルト形態と覚える技が異なる形態は別エントリとして追加
-  - 覚える技が同じ形態はデフォルトに統合（進化ライン側で同一技セットとしてグループ化）
+進化・フォルムライン:
+  - pokemon_evolution.csv の base_form_id / evolved_form_id からフォルム単位の進化グラフを構築
+  - リーフ（進化終端）= 1ライン。分岐進化では共有の進化元が複数ラインに所属
+  - 化粧/バトル/switchable フォルムは種族段階ノードに統合（同一ライン・別エントリは種族値等で分岐）
+
+エントリ:
+  - (タイプ, 特性, 種族値, 技) の署名が異なる form は別エントリ
+  - 署名が同一の純化粧フォルムは1エントリに統合
 
 覚える技の引き継ぎ:
-  - 進化後は進化前（およびその前）の覚える技をすべて引き継ぐ
-  - 進化前には進化後の技は含めない
-  - 地域フォルム（アローラ・ガラル・ヒスイ・パルデア）の進化ラインは
-    同じ地域フォルムの進化元からのみ引き継ぐ（例: ガラルヒヒダルマ←ガラルダルマッカのみ）
+  - フォルム進化グラフの親ノードを辿り、進化前の技をすべて引き継ぐ
 """
 from __future__ import annotations
 
@@ -53,18 +55,6 @@ MODES = [
     {"key": "champions", "label": "チャンピオンズ", "max_gen": 9, "vgs": [32]},
 ]
 
-REGIONAL_BRANCHES = ("alola", "galar", "hisui", "paldea")
-
-
-def regional_branch(form_identifier: str) -> str | None:
-    if not form_identifier:
-        return None
-    parts = form_identifier.split("-")
-    for branch in REGIONAL_BRANCHES:
-        if branch in parts:
-            return branch
-    return None
-
 
 def read_csv(name: str) -> list[dict[str, str]]:
     path = CSV_DIR / name
@@ -81,6 +71,94 @@ def to_int(v: str | None, default: int = 0) -> int:
     return int(v)
 
 
+def build_form_evolution_graph(
+    evolution_rows: list[dict[str, str]],
+    evolves_from: dict[int, int],
+    default_pokemon: dict[int, int],
+    pokemon_species: dict[int, int],
+    pokemon_is_default: dict[int, bool],
+    form_evo_participants: set[int],
+    form_is_mega: dict[int, bool],
+    form_is_battle_only: dict[int, bool],
+    species_switchable: dict[int, bool],
+) -> tuple[
+    dict[int, list[int]],
+    dict[int, list[int]],
+    dict[int, int],
+    dict[int, list[int]],
+]:
+    """フォルム進化グラフとライン所属を構築する。"""
+
+    def is_independent_form(pid: int) -> bool:
+        if pid in form_evo_participants:
+            return True
+        if pokemon_is_default.get(pid, False):
+            return True
+        if form_is_mega.get(pid, False) or form_is_battle_only.get(pid, False):
+            return False
+        sid = pokemon_species[pid]
+        if species_switchable.get(sid, False):
+            return False
+        return True
+
+    def node_of(pid: int) -> int:
+        if is_independent_form(pid):
+            return pid
+        sid = pokemon_species[pid]
+        return default_pokemon[sid]
+
+    children: dict[int, set[int]] = defaultdict(set)
+    parents: dict[int, set[int]] = defaultdict(set)
+
+    for row in evolution_rows:
+        child_sid = to_int(row["evolved_species_id"])
+        parent_sid = evolves_from.get(child_sid)
+        if parent_sid is None:
+            continue
+
+        base_pid = to_int(row.get("base_form_id") or "") or default_pokemon.get(parent_sid)
+        evolved_pid = to_int(row.get("evolved_form_id") or "") or default_pokemon.get(child_sid)
+        if base_pid is None or evolved_pid is None:
+            continue
+
+        parent_node = node_of(base_pid)
+        child_node = node_of(evolved_pid)
+        if parent_node == child_node:
+            continue
+        children[parent_node].add(child_node)
+        parents[child_node].add(parent_node)
+
+    leaf_memo: dict[int, frozenset[int]] = {}
+
+    def leaves_of(node: int) -> frozenset[int]:
+        if node in leaf_memo:
+            return leaf_memo[node]
+        kids = children.get(node, set())
+        if not kids:
+            leaf_memo[node] = frozenset({node})
+            return leaf_memo[node]
+        result: set[int] = set()
+        for kid in kids:
+            result |= leaves_of(kid)
+        leaf_memo[node] = frozenset(result)
+        return leaf_memo[node]
+
+    pid_to_node: dict[int, int] = {}
+    pid_to_lines: dict[int, list[int]] = {}
+    all_pids = set(pokemon_species.keys())
+    for pid in all_pids:
+        node = node_of(pid)
+        pid_to_node[pid] = node
+        pid_to_lines[pid] = sorted(leaves_of(node))
+
+    return (
+        {k: sorted(v) for k, v in children.items()},
+        {k: sorted(v) for k, v in parents.items()},
+        pid_to_node,
+        pid_to_lines,
+    )
+
+
 def main() -> None:
     if not CSV_DIR.is_dir():
         print(f"ERROR: CSV directory not found: {CSV_DIR}", file=sys.stderr)
@@ -90,36 +168,64 @@ def main() -> None:
 
     species_rows = read_csv("pokemon_species.csv")
     pokemon_rows = read_csv("pokemon.csv")
+    evolution_rows = read_csv("pokemon_evolution.csv")
 
-    species_evo: dict[int, int] = {}
     evolves_from: dict[int, int] = {}
+    species_switchable: dict[int, bool] = {}
     for row in species_rows:
         sid = to_int(row["id"])
-        species_evo[sid] = to_int(row["evolution_chain_id"])
+        species_switchable[sid] = to_int(row.get("forms_switchable", "0")) == 1
         parent = row.get("evolves_from_species_id", "").strip()
         if parent:
             evolves_from[sid] = to_int(parent)
 
     default_pokemon: dict[int, int] = {}
     pokemon_species: dict[int, int] = {}
-    pokemon_identifier: dict[int, str] = {}
     species_to_pids: dict[int, list[int]] = defaultdict(list)
+    pokemon_is_default: dict[int, bool] = {}
     for row in pokemon_rows:
         pid = to_int(row["id"])
         sid = to_int(row["species_id"])
         pokemon_species[pid] = sid
-        pokemon_identifier[pid] = row["identifier"]
         species_to_pids[sid].append(pid)
-        if to_int(row.get("is_default", "0")) == 1:
+        pokemon_is_default[pid] = to_int(row.get("is_default", "0")) == 1
+        if pokemon_is_default[pid]:
             default_pokemon[sid] = pid
 
     pokemon_to_form: dict[int, int] = {}
     pokemon_form_identifier: dict[int, str] = {}
+    form_is_default: dict[int, bool] = {}
+    form_is_mega: dict[int, bool] = {}
+    form_is_battle_only: dict[int, bool] = {}
     for row in read_csv("pokemon_forms.csv"):
         fid = to_int(row["id"])
         pid = to_int(row["pokemon_id"])
         pokemon_to_form[pid] = fid
         pokemon_form_identifier[fid] = (row.get("form_identifier") or "").strip()
+        form_is_default[pid] = to_int(row.get("is_default", "0")) == 1
+        form_is_mega[pid] = to_int(row.get("is_mega", "0")) == 1
+        form_is_battle_only[pid] = to_int(row.get("is_battle_only", "0")) == 1
+
+    form_evo_participants: set[int] = set()
+    for row in evolution_rows:
+        base = row.get("base_form_id", "").strip()
+        evolved = row.get("evolved_form_id", "").strip()
+        if base:
+            form_evo_participants.add(to_int(base))
+        if evolved:
+            form_evo_participants.add(to_int(evolved))
+
+    _, parents, pid_to_node, pid_to_lines = build_form_evolution_graph(
+        evolution_rows,
+        evolves_from,
+        default_pokemon,
+        pokemon_species,
+        pokemon_is_default,
+        form_evo_participants,
+        form_is_mega,
+        form_is_battle_only,
+        species_switchable,
+    )
 
     form_fullname_ja: dict[int, str] = {}
     form_label_ja: dict[int, str] = {}
@@ -203,26 +309,31 @@ def main() -> None:
         all_moves_by_pokemon[pid].add(mid)
 
     def resolve_types(pid: int, max_gen: int) -> list[int]:
-        slot_best: dict[int, tuple[int, int]] = {}
+        slot_types: dict[int, int] = {slot: tid for slot, tid in cur_types.get(pid, [])}
+        slot_override: dict[int, tuple[int, int]] = {}
         for gen, tid, slot in types_past.get(pid, []):
-            if gen <= max_gen and (slot not in slot_best or gen >= slot_best[slot][0]):
-                slot_best[slot] = (gen, tid)
-        if slot_best:
-            return [slot_best[s][1] for s in sorted(slot_best)]
-        slots = cur_types.get(pid, [])
-        return [tid for _, tid in sorted(slots)]
+            if gen >= max_gen:
+                if slot not in slot_override or gen < slot_override[slot][0]:
+                    slot_override[slot] = (gen, tid)
+        for slot, (_, tid) in slot_override.items():
+            slot_types[slot] = tid
+        return [slot_types[s] for s in sorted(slot_types)]
 
     def resolve_abilities(pid: int, max_gen: int) -> list[int]:
-        slot_state: dict[int, tuple[int, int, int]] = {}
-        for gen, aid, hidden, slot in sorted(abilities_past.get(pid, []), key=lambda x: x[0]):
-            if gen <= max_gen:
-                if aid:
-                    slot_state[slot] = (gen, aid, hidden)
-                elif slot in slot_state:
-                    del slot_state[slot]
-        if slot_state:
-            return sorted({aid for _, aid, _ in slot_state.values()})
-        return sorted({aid for _, aid, _ in cur_abilities.get(pid, [])})
+        slot_abilities: dict[int, int] = {
+            slot: aid for slot, aid, _ in cur_abilities.get(pid, [])
+        }
+        slot_override: dict[int, tuple[int, int, int]] = {}
+        for gen, aid, _hidden, slot in abilities_past.get(pid, []):
+            if gen >= max_gen:
+                if slot not in slot_override or gen < slot_override[slot][0]:
+                    slot_override[slot] = (gen, aid, slot)
+        for _gen, aid, slot in slot_override.values():
+            if aid:
+                slot_abilities[slot] = aid
+            else:
+                slot_abilities.pop(slot, None)
+        return sorted(slot_abilities.values())
 
     def resolve_stats(pid: int, max_gen: int) -> dict[str, int]:
         stats = {k: cur_stats.get(pid, {}).get(sid, 0) for sid, k in STAT_KEYS.items()}
@@ -244,35 +355,18 @@ def main() -> None:
             merged |= moves_by_vg.get(vg, {}).get(pid, set())
         return tuple(sorted(merged))
 
-    def pokemon_regional_branch(pid: int) -> str | None:
-        fid = pokemon_to_form.get(pid)
-        if fid is None:
-            return None
-        return regional_branch(pokemon_form_identifier.get(fid, ""))
-
-    def pick_ancestor_pid(child_pid: int, parent_sid: int, vgs: list[int] | None) -> int | None:
-        parent_default = default_pokemon.get(parent_sid)
-        if parent_default is None:
-            return None
-
-        child_branch = pokemon_regional_branch(child_pid)
-        if child_branch is None:
-            return parent_default
-
-        for cpid in candidate_pids_for_species(parent_sid, vgs):
-            if pokemon_regional_branch(cpid) == child_branch:
-                return cpid
-        return None
-
-    def moves_with_inheritance(pid: int, sid: int, vgs: list[int] | None) -> tuple[int, ...]:
+    def moves_with_inheritance(pid: int, vgs: list[int] | None) -> tuple[int, ...]:
         merged = set(moves_for_vgs(pid, vgs))
-        current_sid = sid
-        while current_sid in evolves_from:
-            parent_sid = evolves_from[current_sid]
-            parent_pid = pick_ancestor_pid(pid, parent_sid, vgs)
-            if parent_pid is not None:
-                merged |= set(moves_for_vgs(parent_pid, vgs))
-            current_sid = parent_sid
+        node = pid_to_node[pid]
+        seen: set[int] = {node}
+        stack = list(parents.get(node, []))
+        while stack:
+            ancestor = stack.pop()
+            if ancestor in seen:
+                continue
+            seen.add(ancestor)
+            merged |= set(moves_for_vgs(ancestor, vgs))
+            stack.extend(parents.get(ancestor, []))
         return tuple(sorted(merged))
 
     def resolve_display_name(pid: int, sid: int) -> str:
@@ -308,16 +402,23 @@ def main() -> None:
                     found.add(pid)
         return sorted(found)
 
+    def entry_signature(pid: int, sid: int, mode: dict) -> tuple:
+        return (
+            tuple(resolve_types(pid, mode["max_gen"])),
+            tuple(resolve_abilities(pid, mode["max_gen"])),
+            tuple(sorted(resolve_stats(pid, mode["max_gen"]).items())),
+            moves_with_inheritance(pid, mode["vgs"]),
+        )
+
     def make_entry(pid: int, sid: int, mode: dict) -> dict:
-        moves = list(moves_with_inheritance(pid, sid, mode["vgs"]))
         return {
             "i": pid,
             "n": resolve_display_name(pid, sid),
             "t": resolve_types(pid, mode["max_gen"]),
             "a": resolve_abilities(pid, mode["max_gen"]),
             "s": resolve_stats(pid, mode["max_gen"]),
-            "m": moves,
-            "e": species_evo.get(sid, sid),
+            "m": list(moves_with_inheritance(pid, mode["vgs"])),
+            "e": pid_to_lines[pid],
         }
 
     def build_species_entries(sid: int, mode: dict) -> list[dict]:
@@ -329,22 +430,17 @@ def main() -> None:
         if not candidates and mode["vgs"] is None:
             candidates = [default_pid]
 
-        default_moves = moves_for_vgs(default_pid, mode["vgs"])
-        entries: list[dict] = []
-
-        if default_moves or mode["vgs"] is None:
-            entries.append(make_entry(default_pid, sid, mode))
-
+        by_sig: dict[tuple, int] = {}
         for pid in candidates:
-            if pid == default_pid:
+            if mode["vgs"] is not None and not moves_for_vgs(pid, mode["vgs"]):
                 continue
-            form_moves = moves_for_vgs(pid, mode["vgs"])
-            if mode["vgs"] is not None and not form_moves:
-                continue
-            if form_moves != default_moves:
-                entries.append(make_entry(pid, sid, mode))
+            sig = entry_signature(pid, sid, mode)
+            if sig not in by_sig:
+                by_sig[sig] = pid
+            elif pid == default_pid:
+                by_sig[sig] = pid
 
-        return entries
+        return [make_entry(by_sig[sig], sid, mode) for sig in sorted(by_sig)]
 
     types_json = [
         {"id": tid, "name": type_names.get(tid, f"type{tid}"), "icon": TYPE_ICON.get(tid, "normal")}
