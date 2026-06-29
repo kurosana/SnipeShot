@@ -3,7 +3,7 @@
  *
  * 進化・フォルムライン: 各エントリの e（リーフノード id の配列）でグループ化。
  * 分岐進化では共有の進化元が複数ラインに所属しうる。
- * 一騎打ち判定: 単独ライン数 + 吸収されない分岐個体の連結成分数が2のとき
+ * ライン数・一騎打ち・解答表示: 単独ライン数 + 吸収されない分岐個体の連結成分数
  */
 const FilterEngine = {
   lineIds(p) {
@@ -63,6 +63,22 @@ const FilterEngine = {
     }
   },
 
+  classifyHits(hits) {
+    const singleton = new Set();
+    const multi = [];
+    for (const p of hits) {
+      const lines = this.lineIds(p);
+      if (lines.length === 1) {
+        singleton.add(lines[0]);
+      } else if (lines.length > 1) {
+        multi.push({ p, lineSet: new Set(lines) });
+      }
+    }
+    const absorbed = multi.filter(({ lineSet }) => [...lineSet].some((l) => singleton.has(l)));
+    const remaining = multi.filter(({ lineSet }) => ![...lineSet].some((l) => singleton.has(l)));
+    return { singleton, absorbed, remaining };
+  },
+
   countMultiLineComponents(multiSets) {
     if (multiSets.length === 0) return 0;
     const parent = multiSets.map((_, i) => i);
@@ -86,19 +102,39 @@ const FilterEngine = {
     return roots.size;
   },
 
-  countResults(hits) {
-    const singleton = new Set();
-    const multi = [];
-    const byLine = new Map();
-
-    for (const p of hits) {
-      const lines = this.lineIds(p);
-      if (lines.length === 1) {
-        singleton.add(lines[0]);
-      } else if (lines.length > 1) {
-        multi.push(new Set(lines));
+  partitionMultiByComponent(multiItems) {
+    if (multiItems.length === 0) return [];
+    const parent = multiItems.map((_, i) => i);
+    const find = (i) => {
+      if (parent[i] !== i) parent[i] = find(parent[i]);
+      return parent[i];
+    };
+    const union = (a, b) => {
+      const ra = find(a);
+      const rb = find(b);
+      if (ra !== rb) parent[ra] = rb;
+    };
+    for (let i = 0; i < multiItems.length; i++) {
+      for (let j = i + 1; j < multiItems.length; j++) {
+        const shared = [...multiItems[i].lineSet].some((line) => multiItems[j].lineSet.has(line));
+        if (shared) union(i, j);
       }
-      for (const lineId of lines) {
+    }
+    const buckets = new Map();
+    for (let i = 0; i < multiItems.length; i++) {
+      const root = find(i);
+      if (!buckets.has(root)) buckets.set(root, []);
+      buckets.get(root).push(multiItems[i]);
+    }
+    return [...buckets.values()];
+  },
+
+  countResults(hits) {
+    const { singleton, remaining } = this.classifyHits(hits);
+
+    const byLine = new Map();
+    for (const p of hits) {
+      for (const lineId of this.lineIds(p)) {
         if (!byLine.has(lineId)) byLine.set(lineId, []);
         byLine.get(lineId).push(p);
       }
@@ -109,22 +145,39 @@ const FilterEngine = {
       if (group.length >= 2) evoFormLines += 1;
     }
 
-    const remaining = multi.filter((lineSet) => ![...lineSet].some((l) => singleton.has(l)));
-    const multiComponents = this.countMultiLineComponents(remaining);
+    const remainingSets = remaining.map(({ lineSet }) => lineSet);
+    const multiComponents = this.countMultiLineComponents(remainingSets);
     const lines = singleton.size + multiComponents;
 
     return { count: hits.length, evoFormLines, lines };
   },
 
-  groupByEvoFormLine(hits) {
-    const byLine = new Map();
+  groupHitsForDisplay(hits) {
+    const { singleton, absorbed, remaining } = this.classifyHits(hits);
+    const groups = new Map();
+
+    const addTo = (key, p) => {
+      if (!groups.has(key)) groups.set(key, []);
+      const arr = groups.get(key);
+      if (!arr.includes(p)) arr.push(p);
+    };
+
     for (const p of hits) {
-      for (const lineId of this.lineIds(p)) {
-        if (!byLine.has(lineId)) byLine.set(lineId, []);
-        byLine.get(lineId).push(p);
-      }
+      const lines = this.lineIds(p);
+      if (lines.length === 1) addTo(`line:${lines[0]}`, p);
     }
-    return [...byLine.values()].map((group) =>
+
+    for (const { p, lineSet } of absorbed) {
+      const target = [...lineSet].filter((l) => singleton.has(l)).sort((a, b) => a - b)[0];
+      addTo(`line:${target}`, p);
+    }
+
+    const comps = this.partitionMultiByComponent(remaining);
+    comps.forEach((comp, i) => {
+      for (const { p } of comp) addTo(`comp:${i}`, p);
+    });
+
+    return [...groups.values()].map((group) =>
       group.sort((a, b) => a.i - b.i).map((p) => p.n)
     );
   },

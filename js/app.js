@@ -634,7 +634,7 @@
   }
 
   function renderAnswerList() {
-    const groups = FilterEngine.groupByEvoFormLine(state.hits);
+    const groups = FilterEngine.groupHitsForDisplay(state.hits);
     const el = $("#result-answer");
     el.innerHTML = groups
       .map((names) => `<p class="answer-line">${names.map(formatPokemonName).join("・")}</p>`)
