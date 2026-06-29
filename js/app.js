@@ -661,15 +661,28 @@
   }
 
   function toggleAnswerPreview() {
+    const prevPreview = state.answerPreview;
     if (!state.cheatEverUsed) state.cheatEverUsed = true;
     state.answerPreview = !state.answerPreview;
-    if (state.answerPreview) {
-      refreshResults({ skipDobon: true });
-      renderAnswerList();
-    } else {
-      hideAnswerList();
+    try {
+      if (state.answerPreview) {
+        refreshResults({ skipDobon: true });
+        renderAnswerList();
+      } else {
+        hideAnswerList();
+      }
+    } catch (e) {
+      console.error(e);
+      state.answerPreview = prevPreview;
+      if (state.answerPreview) {
+        renderAnswerList();
+      } else {
+        hideAnswerList();
+      }
+      alert("カンニング表示に失敗しました。Ctrl+Shift+R で再読み込みしてください。");
+    } finally {
+      updateCheatButtonUI();
     }
-    updateCheatButtonUI();
   }
 
   function getRulesBasicHtml() {
@@ -771,9 +784,21 @@
     }
   }
 
+  function verifyFilterEngine() {
+    if (typeof FilterEngine?.groupHitsForDisplay === "function") return true;
+    alert(
+      "js/filter.js が古い可能性があります。Ctrl+Shift+R（スーパーリロード）でページを再読み込みしてください。"
+    );
+    return false;
+  }
+
   async function init() {
     showScreen("loading");
     try {
+      if (!verifyFilterEngine()) {
+        showScreen("start");
+        return;
+      }
       await loadAppConfig();
       const rulesBox = $("#rules-box");
       if (rulesBox && !rulesBox.innerHTML.trim()) {
