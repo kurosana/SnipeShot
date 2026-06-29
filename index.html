@@ -68,7 +68,7 @@
         <div class="banner-center" id="banner-center">
           <div class="banner-title-row" id="banner-title-row">
             <h1 class="banner-title" id="banner-title"></h1>
-            <button type="button" class="btn-rules-help" id="btn-rules-help" aria-label="ルール説明">？</button>
+            <button type="button" class="btn-banner btn-rules-help" id="btn-rules-help" aria-label="ヘルプ">ヘルプ</button>
           </div>
           <div class="banner-duel-row" id="banner-duel-row" hidden>
             <p class="banner-timer" id="banner-timer"></p>
@@ -99,20 +99,30 @@
       </div>
 
       <footer class="result-zone" id="result-zone">
-        <div class="result-summary" id="result-summary">
-          <p class="result-line">
-            <span class="result-label">該当ポケモンは</span>
-            <span class="result-count" id="result-count">0</span>
-            <span class="result-label">匹</span>
-          </p>
-          <p class="result-line">
-            <span class="result-label">うち進化・フォルムラインは</span>
-            <span class="result-lines" id="result-lines">0</span>
-            <span class="result-label">ライン</span>
-          </p>
+        <div class="result-zone-inner">
+          <div class="result-main">
+            <div class="result-stats-block" id="result-stats-block">
+              <div class="result-legend">
+                <p class="result-legend-line"><span class="result-legend-key">匹：</span>ヒットしたポケモン合計（フォルムも別カウント）</p>
+                <p class="result-legend-line"><span class="result-legend-key">ライン：</span>進化・フォルム系統を1ラインにまとめた合計</p>
+              </div>
+              <div class="result-summary" id="result-summary">
+                <span class="result-heading">該当は</span>
+                <div class="result-stat-row result-stat-row--count">
+                  <span class="result-count" id="result-count">0</span>
+                  <span class="result-label">匹</span>
+                </div>
+                <div class="result-stat-row result-stat-row--lines">
+                  <span class="result-lines" id="result-lines">0</span>
+                  <span class="result-label">ライン</span>
+                </div>
+              </div>
+              <div class="dobon-stack" id="dobon-stack" hidden></div>
+            </div>
+            <div class="result-answer" id="result-answer" hidden></div>
+            <button type="button" class="btn-reveal" id="btn-reveal" hidden>解答発表</button>
+          </div>
         </div>
-        <div class="result-answer" id="result-answer" hidden></div>
-        <button type="button" class="btn-reveal" id="btn-reveal" hidden>解答発表</button>
       </footer>
     </section>
 
@@ -160,7 +170,7 @@
   <div id="overlay-rules" class="overlay" aria-hidden="true">
     <div class="overlay-inner rules-overlay-inner">
       <div class="overlay-header">
-        <h2 class="overlay-title">ルール</h2>
+        <h2 class="overlay-title">ヘルプ</h2>
         <button type="button" class="btn-close-overlay" id="btn-close-rules">閉じる</button>
       </div>
       <div class="rules-box rules-box-overlay" id="rules-overlay-body"></div>
@@ -170,7 +180,7 @@
   <!-- 一騎打ちポップアップ -->
   <div id="overlay-duel" class="overlay overlay-duel" aria-hidden="true">
     <div class="duel-popup">
-      <img src="Img/ikkiuti.png" alt="一騎打ち" class="duel-image" id="duel-image">
+      <img src="Img/neraiute.png" alt="ねらいうて！" class="duel-image" id="duel-image">
       <p class="duel-timer" id="duel-timer">1:00</p>
     </div>
   </div>

@@ -24,6 +24,9 @@
     duelPopupShown: false,
     duelCancelled: false,
     answerPreview: false,
+    cheatEverUsed: false,
+    prevResultStats: null,
+    prevConditionSignature: null,
   };
 
   const setupState = {
@@ -141,6 +144,67 @@
     }
   }
 
+  function hasActiveConditions() {
+    return state.conditions.some((c) => !c.excluded && FilterEngine.isComplete(c));
+  }
+
+  function clearDobonStack() {
+    const stack = $("#dobon-stack");
+    if (!stack) return;
+    stack.innerHTML = "";
+    stack.hidden = true;
+  }
+
+  function appendDobon() {
+    const stack = $("#dobon-stack");
+    if (!stack) return;
+    const item = document.createElement("div");
+    item.className = "dobon-item";
+    item.innerHTML = `<img src="${CONFIG.imgFolder}/dobon.png" alt="ドボン" class="dobon-image"><p class="dobon-note">※除外ボタンを押して継続してください</p>`;
+    stack.appendChild(item);
+    stack.hidden = false;
+  }
+
+  function showResultStats() {
+    const statsBlock = $("#result-stats-block");
+    if (statsBlock) statsBlock.hidden = false;
+    $("#result-answer").hidden = true;
+  }
+
+  function hideResultStats() {
+    const statsBlock = $("#result-stats-block");
+    if (statsBlock) statsBlock.hidden = true;
+  }
+
+  function conditionSignature() {
+    return JSON.stringify(
+      state.conditions.map((c) => ({
+        id: c.id,
+        excluded: c.excluded,
+        kind: c.kind,
+        op: c.op,
+        typeId: c.typeId,
+        abilityId: c.abilityId,
+        moveId: c.moveId,
+        statKey: c.statKey,
+        statValue: c.statValue,
+      }))
+    );
+  }
+
+  function checkDobon(prevCount, prevLines, count, lines, conditionsChanged) {
+    if (prevCount == null || prevLines == null) return;
+    if (!hasActiveConditions()) return;
+    if (!conditionsChanged) return;
+    const linesStuck = lines === 0 || lines === 1;
+    if (!linesStuck) return;
+    const statsChanged = prevCount !== count || prevLines !== lines;
+    const countUnchanged = count >= prevCount;
+    if (countUnchanged || statsChanged) {
+      appendDobon();
+    }
+  }
+
   function resetDuelState() {
     stopTimer();
     state.duelActive = false;
@@ -204,17 +268,27 @@
     resetDuelState();
     state.duelCancelled = true;
     if (!state.duelRevealed) {
-      $("#result-summary").hidden = false;
-      $("#result-answer").hidden = true;
+      showResultStats();
     }
   }
 
-  function refreshResults() {
+  function refreshResults({ skipDobon = false } = {}) {
+    const prevCount = state.prevResultStats?.count ?? null;
+    const prevLines = state.prevResultStats?.lines ?? null;
+
     state.hits = FilterEngine.applyAll(DataStore.pokemon, state.conditions);
-    const { count, evoFormLines, lines } = FilterEngine.countResults(state.hits);
+    const { count, lines } = FilterEngine.countResults(state.hits);
+
+    if (!skipDobon) {
+      const sig = conditionSignature();
+      const conditionsChanged = sig !== state.prevConditionSignature;
+      state.prevConditionSignature = sig;
+      checkDobon(prevCount, prevLines, count, lines, conditionsChanged);
+      state.prevResultStats = { count, lines };
+    }
 
     $("#result-count").textContent = String(count);
-    $("#result-lines").textContent = String(evoFormLines);
+    $("#result-lines").textContent = String(lines);
 
     if (state.answerPreview) {
       renderAnswerList();
@@ -316,7 +390,7 @@
           <td class="col-actions">
             <div class="cell-actions">
               <button type="button" class="btn-del" aria-label="削除">×</button>
-              <button type="button" class="btn-exclude${cond.excluded ? " active" : ""}" aria-label="検索から除外">除外</button>
+              <button type="button" class="btn-exclude${cond.excluded ? " active" : ""}" aria-label="${cond.excluded ? "除外を解除" : "検索から除外"}">${cond.excluded ? "戻す" : "除外"}</button>
             </div>
           </td>
         </tr>`;
@@ -375,6 +449,7 @@
 
       tr.querySelector(".btn-exclude")?.addEventListener("click", () => {
         cond.excluded = !cond.excluded;
+        clearDobonStack();
         renderConditions();
         refreshResults();
       });
@@ -456,6 +531,8 @@
   function normalizeJaSearch(text) {
     return String(text ?? "")
       .toLowerCase()
+      .replace(/[\uff01-\uff5e]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xfee0))
+      .replace(/\u3000/g, " ")
       .replace(/[\u3041-\u3096]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) + 0x60));
   }
 
@@ -507,16 +584,25 @@
     });
   }
 
+  function updateCheatButtonUI() {
+    const btnCheat = $("#btn-cheat");
+    if (!btnCheat) return;
+    btnCheat.classList.toggle("active", state.answerPreview);
+    btnCheat.classList.toggle("cheat-used", state.cheatEverUsed && !state.answerPreview);
+  }
+
   function resetGame() {
     resetDuelState();
     state.conditions = [newCondition()];
     state.hits = [];
     state.answerPreview = false;
+    state.cheatEverUsed = false;
+    state.prevResultStats = null;
+    state.prevConditionSignature = null;
     state.remainingSec = state.timeSec;
-    const btnCheat = $("#btn-cheat");
-    if (btnCheat) btnCheat.classList.remove("active");
-    $("#result-summary").hidden = false;
-    $("#result-answer").hidden = true;
+    clearDobonStack();
+    updateCheatButtonUI();
+    showResultStats();
     renderConditions();
     refreshResults();
   }
@@ -547,12 +633,12 @@
       .map((names) => `<p class="answer-line">${names.map(escapeHtml).join("・")}</p>`)
       .join("");
     el.hidden = false;
-    $("#result-summary").hidden = true;
+    hideResultStats();
   }
 
   function hideAnswerList() {
     $("#result-answer").hidden = true;
-    $("#result-summary").hidden = false;
+    showResultStats();
   }
 
   function revealAnswer() {
@@ -561,29 +647,48 @@
     hideDuelUI();
     state.duelRevealed = true;
     state.answerPreview = false;
-    const btnCheat = $("#btn-cheat");
-    if (btnCheat) btnCheat.classList.remove("active");
+    state.cheatEverUsed = false;
+    updateCheatButtonUI();
     renderAnswerList();
     $("#btn-reveal").hidden = true;
   }
 
   function toggleAnswerPreview() {
+    if (!state.cheatEverUsed) state.cheatEverUsed = true;
     state.answerPreview = !state.answerPreview;
-    const btnCheat = $("#btn-cheat");
     if (state.answerPreview) {
-      refreshResults();
+      refreshResults({ skipDobon: true });
       renderAnswerList();
-      btnCheat?.classList.add("active");
     } else {
       hideAnswerList();
-      btnCheat?.classList.remove("active");
     }
+    updateCheatButtonUI();
+  }
+
+  function getRulesBasicHtml() {
+    return CONFIG.rulesBasicHtml || CONFIG.rulesHtml || "";
+  }
+
+  function getRulesDetailHtml() {
+    return CONFIG.rulesDetailHtml || "";
+  }
+
+  function buildStartRulesHtml() {
+    const basic = getRulesBasicHtml();
+    return `${basic}<p class="rules-help-hint">詳しくはゲーム画面のヘルプボタンで！</p>`;
+  }
+
+  function buildOverlayRulesHtml() {
+    const basic = getRulesBasicHtml();
+    const detail = getRulesDetailHtml();
+    if (!detail) return basic;
+    return `${basic}<div class="rules-detail">${detail}</div>`;
   }
 
   function openRulesOverlay() {
     const body = $("#rules-overlay-body");
     if (body) {
-      body.innerHTML = CONFIG.rulesHtml || ($("#rules-box")?.innerHTML ?? "");
+      body.innerHTML = buildOverlayRulesHtml();
     }
     const ov = $("#overlay-rules");
     ov.classList.add("active");
@@ -625,12 +730,12 @@
       const titleEl = $("#app-title");
       if (titleEl) titleEl.textContent = cfg.appTitle;
     }
-    if (cfg.rulesHtml) {
-      CONFIG.rulesHtml = cfg.rulesHtml;
+    if (cfg.rulesBasicHtml || cfg.rulesDetailHtml || cfg.rulesHtml) {
+      if (cfg.rulesBasicHtml) CONFIG.rulesBasicHtml = cfg.rulesBasicHtml;
+      if (cfg.rulesDetailHtml) CONFIG.rulesDetailHtml = cfg.rulesDetailHtml;
+      if (cfg.rulesHtml) CONFIG.rulesHtml = cfg.rulesHtml;
       const box = $("#rules-box");
-      if (box) box.innerHTML = cfg.rulesHtml;
-      const overlayBody = $("#rules-overlay-body");
-      if (overlayBody) overlayBody.innerHTML = cfg.rulesHtml;
+      if (box) box.innerHTML = buildStartRulesHtml();
     }
     if (cfg.version) {
       CONFIG.version = cfg.version;
@@ -663,6 +768,10 @@
     showScreen("loading");
     try {
       await loadAppConfig();
+      const rulesBox = $("#rules-box");
+      if (rulesBox && !rulesBox.innerHTML.trim()) {
+        rulesBox.innerHTML = buildStartRulesHtml();
+      }
       await DataStore.init();
       populateGenerationSelect();
       showScreen("start");
@@ -712,6 +821,9 @@
     const ok = await confirmDialog("ゲームを終了してスタート画面に戻りますか？");
     if (!ok) return;
     resetDuelState();
+    state.cheatEverUsed = false;
+    updateCheatButtonUI();
+    clearDobonStack();
     showScreen("start");
   });
 
