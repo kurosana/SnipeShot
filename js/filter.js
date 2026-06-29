@@ -3,7 +3,7 @@
  *
  * 進化・フォルムライン: 各エントリの e（リーフノード id の配列）でグループ化。
  * 分岐進化では共有の進化元が複数ラインに所属しうる。
- * 一騎打ち判定: 該当ポケモンに含まれるユニークなライン数が2のとき
+ * 一騎打ち判定: 単独ライン数 + 吸収されない分岐個体の連結成分数が2のとき
  */
 const FilterEngine = {
   lineIds(p) {
@@ -63,21 +63,57 @@ const FilterEngine = {
     }
   },
 
+  countMultiLineComponents(multiSets) {
+    if (multiSets.length === 0) return 0;
+    const parent = multiSets.map((_, i) => i);
+    const find = (i) => {
+      if (parent[i] !== i) parent[i] = find(parent[i]);
+      return parent[i];
+    };
+    const union = (a, b) => {
+      const ra = find(a);
+      const rb = find(b);
+      if (ra !== rb) parent[ra] = rb;
+    };
+    for (let i = 0; i < multiSets.length; i++) {
+      for (let j = i + 1; j < multiSets.length; j++) {
+        const shared = [...multiSets[i]].some((line) => multiSets[j].has(line));
+        if (shared) union(i, j);
+      }
+    }
+    const roots = new Set();
+    for (let i = 0; i < multiSets.length; i++) roots.add(find(i));
+    return roots.size;
+  },
+
   countResults(hits) {
-    const lineSet = new Set();
+    const singleton = new Set();
+    const multi = [];
     const byLine = new Map();
+
     for (const p of hits) {
-      for (const lineId of this.lineIds(p)) {
-        lineSet.add(lineId);
+      const lines = this.lineIds(p);
+      if (lines.length === 1) {
+        singleton.add(lines[0]);
+      } else if (lines.length > 1) {
+        multi.push(new Set(lines));
+      }
+      for (const lineId of lines) {
         if (!byLine.has(lineId)) byLine.set(lineId, []);
         byLine.get(lineId).push(p);
       }
     }
+
     let evoFormLines = 0;
     for (const group of byLine.values()) {
       if (group.length >= 2) evoFormLines += 1;
     }
-    return { count: hits.length, evoFormLines, lines: lineSet.size };
+
+    const remaining = multi.filter((lineSet) => ![...lineSet].some((l) => singleton.has(l)));
+    const multiComponents = this.countMultiLineComponents(remaining);
+    const lines = singleton.size + multiComponents;
+
+    return { count: hits.length, evoFormLines, lines };
   },
 
   groupByEvoFormLine(hits) {

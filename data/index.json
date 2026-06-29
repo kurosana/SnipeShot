@@ -4,7 +4,7 @@
       "key": "all",
       "label": "全ポケモン全わざ",
       "file": "mode_all.json",
-      "count": 1306
+      "count": 1264
     },
     {
       "key": "gen1",
@@ -46,19 +46,19 @@
       "key": "gen7",
       "label": "7世代",
       "file": "mode_gen7.json",
-      "count": 928
+      "count": 925
     },
     {
       "key": "pikabui",
       "label": "ピカブイ",
       "file": "mode_pikabui.json",
-      "count": 188
+      "count": 186
     },
     {
       "key": "gen8",
       "label": "8世代",
       "file": "mode_gen8.json",
-      "count": 736
+      "count": 735
     },
     {
       "key": "bdsp",
@@ -76,13 +76,13 @@
       "key": "gen9",
       "label": "9世代",
       "file": "mode_gen9.json",
-      "count": 836
+      "count": 833
     },
     {
       "key": "champions",
       "label": "チャンピオンズ",
       "file": "mode_champions.json",
-      "count": 279
+      "count": 278
     }
   ],
   "stats": [

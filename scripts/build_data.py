@@ -6,18 +6,16 @@ PokeAPI CSV -> ねらいうちゲーム用 JSON ビルドスクリプト
 進化・フォルムライン:
   - pokemon_evolution.csv の base_form_id / evolved_form_id からフォルム単位の進化グラフを構築
   - リーフ（進化終端）= 1ライン。分岐進化では共有の進化元が複数ラインに所属
-  - 化粧/バトル/switchable フォルムは種族段階ノードに統合（同一ライン・別エントリは種族値等で分岐）
+  - 種族デフォルトとフォルム進化参加者のみ独立ノード。代替フォルムは種族ラインへ統合
+  - リージョン亜種は同接頭辞の独立フォルムへ統合（ガラルダルマモード等）
 
-エントリ:
-  - (タイプ, 特性, 種族値, 技) の署名が異なる form は別エントリ
-  - 署名が同一の純化粧フォルムは1エントリに統合
+除外:
+  - トーテム / キョダイマックス / 空種族値 / ピカチュウキャップ系
+  - ピカチュウおきがえ6種は専用ライン（本線とは別）
 
-覚える技の引き継ぎ:
-  - フォルム進化グラフの親ノードを辿り、進化前の技をすべて引き継ぐ
-
-トーテムフォルム:
-  - identifier / form_identifier に "totem" を含むフォルムはゲーム対象外
-  - 進化グラフ・候補プール・エントリ生成から除外
+世代:
+  - タイプ・種族値は過去CSVの世代スナップショットで上書き
+  - 特性はスロット単位の過去上書き（既存ロジック）
 """
 from __future__ import annotations
 
@@ -40,6 +38,22 @@ TYPE_ICON = {
     12: "grass", 13: "electric", 14: "psychic", 15: "ice", 16: "dragon",
     17: "dark", 18: "fairy",
 }
+
+REGION_PREFIXES = ("alola", "galar", "hisui", "paldea")
+
+FORM_TOKEN_JA = {
+    "alola": "アローラ",
+    "galar": "ガラル",
+    "hisui": "ヒスイ",
+    "paldea": "パルデア",
+    "zen": "ダルマモード",
+    "combat-breed": "コンバット種",
+    "blaze-breed": "ブレイズ種",
+    "aqua-breed": "アクア種",
+}
+
+PIKACHU_COSPLAY_PIDS = frozenset({10080, 10081, 10082, 10083, 10084, 10085})
+PIKACHU_COSPLAY_LINE = 10085
 
 MODES = [
     {"key": "all", "label": "全ポケモン全わざ", "max_gen": 9, "vgs": None},
@@ -82,6 +96,46 @@ def is_totem_form(identifier: str, form_identifier: str) -> bool:
     return False
 
 
+def is_gmax_form(form_identifier: str) -> bool:
+    if not form_identifier:
+        return False
+    parts = form_identifier.split("-")
+    return "gmax" in parts or "gigantamax" in parts
+
+
+def is_pikachu_cap_form(form_identifier: str) -> bool:
+    if not form_identifier:
+        return False
+    if form_identifier.endswith("-cap"):
+        return True
+    return form_identifier == "starter"
+
+
+def composite_form_label(ident: str, form_label_ja: dict[int, str], fid: int) -> str | None:
+    if not ident:
+        return form_label_ja.get(fid)
+    parts_ja: list[str] = []
+    remaining = ident
+    sorted_tokens = sorted(FORM_TOKEN_JA.keys(), key=len, reverse=True)
+    while remaining:
+        matched = False
+        for tok in sorted_tokens:
+            if remaining == tok or remaining.startswith(tok + "-"):
+                parts_ja.append(FORM_TOKEN_JA[tok])
+                remaining = remaining[len(tok) :].lstrip("-")
+                matched = True
+                break
+        if not matched:
+            break
+    if len(parts_ja) >= 2:
+        return "・".join(parts_ja)
+    if fid in form_label_ja:
+        return form_label_ja[fid]
+    if len(parts_ja) == 1:
+        return parts_ja[0]
+    return None
+
+
 def build_form_evolution_graph(
     evolution_rows: list[dict[str, str]],
     evolves_from: dict[int, int],
@@ -89,10 +143,10 @@ def build_form_evolution_graph(
     pokemon_species: dict[int, int],
     pokemon_is_default: dict[int, bool],
     form_evo_participants: set[int],
-    form_is_mega: dict[int, bool],
-    form_is_battle_only: dict[int, bool],
-    species_switchable: dict[int, bool],
-    totem_pokemon: set[int],
+    pokemon_to_form: dict[int, int],
+    pokemon_form_identifier: dict[int, str],
+    species_to_pids: dict[int, list[int]],
+    excluded_pokemon: set[int],
 ) -> tuple[
     dict[int, list[int]],
     dict[int, list[int]],
@@ -101,22 +155,34 @@ def build_form_evolution_graph(
 ]:
     """フォルム進化グラフとライン所属を構築する。"""
 
+    def form_ident_of(pid: int) -> str:
+        fid = pokemon_to_form.get(pid)
+        if fid is None:
+            return ""
+        return pokemon_form_identifier.get(fid, "")
+
     def is_independent_form(pid: int) -> bool:
-        if pid in form_evo_participants:
-            return True
         if pokemon_is_default.get(pid, False):
             return True
-        if form_is_mega.get(pid, False) or form_is_battle_only.get(pid, False):
-            return False
-        sid = pokemon_species[pid]
-        if species_switchable.get(sid, False):
-            return False
-        return True
+        if pid in form_evo_participants:
+            return True
+        return False
 
     def node_of(pid: int) -> int:
         if is_independent_form(pid):
             return pid
         sid = pokemon_species[pid]
+        ident = form_ident_of(pid)
+        for pref in REGION_PREFIXES:
+            if ident.startswith(pref):
+                for other in species_to_pids.get(sid, []):
+                    if other == pid or other in excluded_pokemon:
+                        continue
+                    if not is_independent_form(other):
+                        continue
+                    if form_ident_of(other).startswith(pref):
+                        return other
+                break
         return default_pokemon[sid]
 
     children: dict[int, set[int]] = defaultdict(set)
@@ -132,7 +198,7 @@ def build_form_evolution_graph(
         evolved_pid = to_int(row.get("evolved_form_id") or "") or default_pokemon.get(child_sid)
         if base_pid is None or evolved_pid is None:
             continue
-        if base_pid in totem_pokemon or evolved_pid in totem_pokemon:
+        if base_pid in excluded_pokemon or evolved_pid in excluded_pokemon:
             continue
 
         parent_node = node_of(base_pid)
@@ -159,7 +225,7 @@ def build_form_evolution_graph(
 
     pid_to_node: dict[int, int] = {}
     pid_to_lines: dict[int, list[int]] = {}
-    all_pids = set(pokemon_species.keys()) - totem_pokemon
+    all_pids = set(pokemon_species.keys()) - excluded_pokemon
     for pid in all_pids:
         node = node_of(pid)
         pid_to_node[pid] = node
@@ -185,10 +251,8 @@ def main() -> None:
     evolution_rows = read_csv("pokemon_evolution.csv")
 
     evolves_from: dict[int, int] = {}
-    species_switchable: dict[int, bool] = {}
     for row in species_rows:
         sid = to_int(row["id"])
-        species_switchable[sid] = to_int(row.get("forms_switchable", "0")) == 1
         parent = row.get("evolves_from_species_id", "").strip()
         if parent:
             evolves_from[sid] = to_int(parent)
@@ -212,19 +276,26 @@ def main() -> None:
     form_is_mega: dict[int, bool] = {}
     form_is_battle_only: dict[int, bool] = {}
     totem_pokemon: set[int] = set()
+    excluded_pokemon: set[int] = set()
     for row in read_csv("pokemon_forms.csv"):
         fid = to_int(row["id"])
         pid = to_int(row["pokemon_id"])
         pokemon_to_form[pid] = fid
-        pokemon_form_identifier[fid] = (row.get("form_identifier") or "").strip()
+        form_ident = (row.get("form_identifier") or "").strip()
+        pokemon_form_identifier[fid] = form_ident
         form_is_default[pid] = to_int(row.get("is_default", "0")) == 1
         form_is_mega[pid] = to_int(row.get("is_mega", "0")) == 1
         form_is_battle_only[pid] = to_int(row.get("is_battle_only", "0")) == 1
         if is_totem_form(
             (row.get("identifier") or "").strip(),
-            (row.get("form_identifier") or "").strip(),
+            form_ident,
         ):
             totem_pokemon.add(pid)
+            excluded_pokemon.add(pid)
+        if is_gmax_form(form_ident):
+            excluded_pokemon.add(pid)
+        if is_pikachu_cap_form(form_ident):
+            excluded_pokemon.add(pid)
 
     form_evo_participants: set[int] = set()
     for row in evolution_rows:
@@ -234,19 +305,6 @@ def main() -> None:
             form_evo_participants.add(to_int(base))
         if evolved:
             form_evo_participants.add(to_int(evolved))
-
-    _, parents, pid_to_node, pid_to_lines = build_form_evolution_graph(
-        evolution_rows,
-        evolves_from,
-        default_pokemon,
-        pokemon_species,
-        pokemon_is_default,
-        form_evo_participants,
-        form_is_mega,
-        form_is_battle_only,
-        species_switchable,
-        totem_pokemon,
-    )
 
     form_fullname_ja: dict[int, str] = {}
     form_label_ja: dict[int, str] = {}
@@ -314,6 +372,28 @@ def main() -> None:
     for row in read_csv("pokemon_stats.csv"):
         cur_stats[to_int(row["pokemon_id"])][to_int(row["stat_id"])] = to_int(row["base_stat"])
 
+    for pid in pokemon_species:
+        if pid not in excluded_pokemon and not cur_stats.get(pid):
+            excluded_pokemon.add(pid)
+
+    _, parents, pid_to_node, pid_to_lines = build_form_evolution_graph(
+        evolution_rows,
+        evolves_from,
+        default_pokemon,
+        pokemon_species,
+        pokemon_is_default,
+        form_evo_participants,
+        pokemon_to_form,
+        pokemon_form_identifier,
+        species_to_pids,
+        excluded_pokemon,
+    )
+
+    for pid in PIKACHU_COSPLAY_PIDS:
+        if pid in pid_to_lines:
+            pid_to_lines[pid] = [PIKACHU_COSPLAY_LINE]
+            pid_to_node[pid] = PIKACHU_COSPLAY_LINE
+
     stats_past: dict[int, list[tuple[int, int, int]]] = defaultdict(list)
     for row in read_csv("pokemon_stats_past.csv"):
         stats_past[to_int(row["pokemon_id"])].append(
@@ -330,15 +410,13 @@ def main() -> None:
         all_moves_by_pokemon[pid].add(mid)
 
     def resolve_types(pid: int, max_gen: int) -> list[int]:
-        slot_types: dict[int, int] = {slot: tid for slot, tid in cur_types.get(pid, [])}
-        slot_override: dict[int, tuple[int, int]] = {}
-        for gen, tid, slot in types_past.get(pid, []):
-            if gen >= max_gen:
-                if slot not in slot_override or gen < slot_override[slot][0]:
-                    slot_override[slot] = (gen, tid)
-        for slot, (_, tid) in slot_override.items():
-            slot_types[slot] = tid
-        return [slot_types[s] for s in sorted(slot_types)]
+        past = types_past.get(pid, [])
+        cand = sorted({g for g, _t, _s in past if g >= max_gen})
+        if cand:
+            g0 = cand[0]
+            slots = {s: t for g, t, s in past if g == g0}
+            return [slots[s] for s in sorted(slots)]
+        return [t for s, t in sorted(cur_types.get(pid, []))]
 
     def resolve_abilities(pid: int, max_gen: int) -> list[int]:
         slot_abilities: dict[int, int] = {
@@ -358,6 +436,13 @@ def main() -> None:
 
     def resolve_stats(pid: int, max_gen: int) -> dict[str, int]:
         stats = {k: cur_stats.get(pid, {}).get(sid, 0) for sid, k in STAT_KEYS.items()}
+        by_stat: dict[int, list[tuple[int, int]]] = defaultdict(list)
+        for g, sid, v in stats_past.get(pid, []):
+            if sid in STAT_KEYS and g >= max_gen:
+                by_stat[sid].append((g, v))
+        for sid, lst in by_stat.items():
+            g0 = min(lst, key=lambda x: x[0])[0]
+            stats[STAT_KEYS[sid]] = next(v for g, v in lst if g == g0)
         special_hist: list[tuple[int, int]] = [
             (g, v) for g, sid, v in stats_past.get(pid, []) if sid == 9 and g <= max_gen
         ]
@@ -391,16 +476,17 @@ def main() -> None:
         return tuple(sorted(merged))
 
     def resolve_display_name(pid: int, sid: int) -> str:
-        default_pid = default_pokemon.get(sid)
-        if default_pid is not None and pid != default_pid:
-            fid = pokemon_to_form.get(pid)
-            if fid:
-                if fid in form_fullname_ja:
-                    return form_fullname_ja[fid]
-                if fid in form_label_ja:
-                    base = names_ja.get(sid, f"#{sid}")
-                    return f"{base}（{form_label_ja[fid]}）"
-        return names_ja.get(sid, f"#{sid}")
+        base = names_ja.get(sid, f"#{sid}")
+        fid = pokemon_to_form.get(pid)
+        if not fid:
+            return base
+        if fid in form_fullname_ja:
+            return form_fullname_ja[fid]
+        ident = pokemon_form_identifier.get(fid, "")
+        label = composite_form_label(ident, form_label_ja, fid)
+        if label:
+            return f"{base}（{label}）"
+        return base
 
     def pool_species(vgs: list[int] | None) -> set[int]:
         if vgs is None:
@@ -408,7 +494,7 @@ def main() -> None:
         species_set: set[int] = set()
         for vg in vgs:
             for pid in moves_by_vg[vg]:
-                if pid in totem_pokemon:
+                if pid in excluded_pokemon:
                     continue
                 sid = pokemon_species.get(pid)
                 if sid and sid in default_pokemon:
@@ -417,11 +503,11 @@ def main() -> None:
 
     def candidate_pids_for_species(sid: int, vgs: list[int] | None) -> list[int]:
         if vgs is None:
-            return [pid for pid in species_to_pids.get(sid, []) if pid not in totem_pokemon]
+            return [pid for pid in species_to_pids.get(sid, []) if pid not in excluded_pokemon]
         found: set[int] = set()
         for vg in vgs:
             for pid in moves_by_vg[vg]:
-                if pid in totem_pokemon:
+                if pid in excluded_pokemon:
                     continue
                 if pokemon_species.get(pid) == sid:
                     found.add(pid)
@@ -467,13 +553,21 @@ def main() -> None:
 
         return [make_entry(by_sig[sig], sid, mode) for sig in sorted(by_sig)]
 
+    learnable_move_ids: set[int] = set()
+    for mids in all_moves_by_pokemon.values():
+        learnable_move_ids.update(mids)
+
     types_json = [
         {"id": tid, "name": type_names.get(tid, f"type{tid}"), "icon": TYPE_ICON.get(tid, "normal")}
         for tid in sorted(type_names)
         if tid in TYPE_ICON
     ]
     abilities_json = [{"id": aid, "name": name} for aid, name in sorted(ability_names.items())]
-    moves_json = [{"id": mid, "name": name} for mid, name in sorted(move_names.items())]
+    moves_json = [
+        {"id": mid, "name": move_names[mid]}
+        for mid in sorted(move_names)
+        if mid in learnable_move_ids
+    ]
 
     with (OUT_DIR / "types.json").open("w", encoding="utf-8") as f:
         json.dump(types_json, f, ensure_ascii=False, separators=(",", ":"))
@@ -514,7 +608,8 @@ def main() -> None:
     with (OUT_DIR / "index.json").open("w", encoding="utf-8") as f:
         json.dump(index, f, ensure_ascii=False, indent=2)
 
-    print(f"Excluded {len(totem_pokemon)} totem forms")
+    print(f"Excluded {len(excluded_pokemon)} forms (totem {len(totem_pokemon)}, gmax/cap/empty etc.)")
+    print(f"Learnable moves: {len(moves_json)} / {len(move_names)}")
     print(f"Done. {len(available_modes)} modes written to {OUT_DIR}")
 
 

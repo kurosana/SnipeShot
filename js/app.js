@@ -473,6 +473,13 @@
       .replace(/"/g, "&quot;");
   }
 
+  function formatPokemonName(name) {
+    const s = String(name ?? "");
+    const m = s.match(/^(.+?)（(.+)）$/);
+    if (!m) return escapeHtml(s);
+    return `${escapeHtml(m[1])}<span class="form-suffix">（${escapeHtml(m[2])}）</span>`;
+  }
+
   function openTypePicker() {
     const list = $("#type-list");
     list.innerHTML = DataStore.types
@@ -630,7 +637,7 @@
     const groups = FilterEngine.groupByEvoFormLine(state.hits);
     const el = $("#result-answer");
     el.innerHTML = groups
-      .map((names) => `<p class="answer-line">${names.map(escapeHtml).join("・")}</p>`)
+      .map((names) => `<p class="answer-line">${names.map(formatPokemonName).join("・")}</p>`)
       .join("");
     el.hidden = false;
     hideResultStats();

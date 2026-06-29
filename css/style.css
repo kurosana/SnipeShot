@@ -863,6 +863,11 @@ tr.condition-excluded .btn-op {
   line-height: 1.4;
 }
 
+.answer-line .form-suffix {
+  font-size: 0.82em;
+  font-weight: bold;
+}
+
 .btn-reveal {
   margin-top: 0.5rem;
   padding: 0.55rem 1.25rem;
