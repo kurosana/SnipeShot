@@ -55,6 +55,9 @@ FORM_TOKEN_JA = {
 PIKACHU_COSPLAY_PIDS = frozenset({10080, 10081, 10082, 10083, 10084, 10085})
 PIKACHU_COSPLAY_LINE = 10085
 
+# 特性違いのみの重複フォルム（ゲーム上は1エントリに統合）
+EXCLUDED_DUPLICATE_PIDS = frozenset({10116, 10119, 10118})
+
 MODES = [
     {"key": "all", "label": "全ポケモン全わざ", "max_gen": 9, "vgs": None},
     {"key": "gen1", "label": "1世代", "max_gen": 1, "vgs": [2]},
@@ -134,6 +137,17 @@ def composite_form_label(ident: str, form_label_ja: dict[int, str], fid: int) ->
     if len(parts_ja) == 1:
         return parts_ja[0]
     return None
+
+
+def is_redundant_form_label(base: str, label: str) -> bool:
+    """種族名の繰り返しのみ冗長（例: グラードンのすがた）。メガゲッコウガ等の別フォルム名は除外しない。"""
+    if label == base:
+        return True
+    if label.endswith("のすがた") and (
+        label.startswith(base) or label.replace("のすがた", "") == base
+    ):
+        return True
+    return False
 
 
 def build_form_evolution_graph(
@@ -271,19 +285,28 @@ def main() -> None:
             default_pokemon[sid] = pid
 
     pokemon_to_form: dict[int, int] = {}
+    pokemon_form_is_default: dict[int, bool] = {}
     pokemon_form_identifier: dict[int, str] = {}
     form_is_default: dict[int, bool] = {}
     form_is_mega: dict[int, bool] = {}
     form_is_battle_only: dict[int, bool] = {}
     totem_pokemon: set[int] = set()
     excluded_pokemon: set[int] = set()
+    excluded_pokemon |= EXCLUDED_DUPLICATE_PIDS
     for row in read_csv("pokemon_forms.csv"):
         fid = to_int(row["id"])
         pid = to_int(row["pokemon_id"])
-        pokemon_to_form[pid] = fid
+        is_def = to_int(row.get("is_default", "0")) == 1
+        if pid not in pokemon_to_form:
+            pokemon_to_form[pid] = fid
+            pokemon_form_is_default[pid] = is_def
+        elif is_def and not pokemon_form_is_default.get(pid, False):
+            pokemon_to_form[pid] = fid
+            pokemon_form_is_default[pid] = True
         form_ident = (row.get("form_identifier") or "").strip()
         pokemon_form_identifier[fid] = form_ident
-        form_is_default[pid] = to_int(row.get("is_default", "0")) == 1
+        if is_def:
+            form_is_default[pid] = True
         form_is_mega[pid] = to_int(row.get("is_mega", "0")) == 1
         form_is_battle_only[pid] = to_int(row.get("is_battle_only", "0")) == 1
         if is_totem_form(
@@ -338,6 +361,18 @@ def main() -> None:
     for row in read_csv("move_names.csv"):
         if to_int(row["local_language_id"]) == JA_LANG:
             move_names[to_int(row["move_id"])] = row["name"]
+
+    egg_group_names: dict[int, str] = {}
+    for row in read_csv("egg_group_prose.csv"):
+        if to_int(row["local_language_id"]) == 1:
+            egg_group_names[to_int(row["egg_group_id"])] = row["name"]
+
+    species_egg_groups: dict[int, list[int]] = defaultdict(list)
+    for row in read_csv("pokemon_egg_groups.csv"):
+        sid = to_int(row["species_id"])
+        egid = to_int(row["egg_group_id"])
+        if egid not in species_egg_groups[sid]:
+            species_egg_groups[sid].append(egid)
 
     cur_types: dict[int, list[tuple[int, int]]] = defaultdict(list)
     for row in read_csv("pokemon_types.csv"):
@@ -475,8 +510,10 @@ def main() -> None:
             stack.extend(parents.get(ancestor, []))
         return tuple(sorted(merged))
 
-    def resolve_display_name(pid: int, sid: int) -> str:
+    def resolve_display_name(pid: int, sid: int, *, suppress_suffix: bool = False) -> str:
         base = names_ja.get(sid, f"#{sid}")
+        if suppress_suffix:
+            return base
         fid = pokemon_to_form.get(pid)
         if not fid:
             return base
@@ -485,6 +522,9 @@ def main() -> None:
         ident = pokemon_form_identifier.get(fid, "")
         label = composite_form_label(ident, form_label_ja, fid)
         if label:
+            if pokemon_is_default.get(pid) or form_is_default.get(pid):
+                if is_redundant_form_label(base, label):
+                    return base
             return f"{base}（{label}）"
         return base
 
@@ -521,15 +561,16 @@ def main() -> None:
             moves_with_inheritance(pid, mode["vgs"]),
         )
 
-    def make_entry(pid: int, sid: int, mode: dict) -> dict:
+    def make_entry(pid: int, sid: int, mode: dict, *, suppress_suffix: bool = False) -> dict:
         return {
             "i": pid,
-            "n": resolve_display_name(pid, sid),
+            "n": resolve_display_name(pid, sid, suppress_suffix=suppress_suffix),
             "t": resolve_types(pid, mode["max_gen"]),
             "a": resolve_abilities(pid, mode["max_gen"]),
             "s": resolve_stats(pid, mode["max_gen"]),
             "m": list(moves_with_inheritance(pid, mode["vgs"])),
             "e": pid_to_lines[pid],
+            "g": sorted(species_egg_groups.get(sid, [])),
         }
 
     def build_species_entries(sid: int, mode: dict) -> list[dict]:
@@ -551,7 +592,9 @@ def main() -> None:
             elif pid == default_pid:
                 by_sig[sig] = pid
 
-        return [make_entry(by_sig[sig], sid, mode) for sig in sorted(by_sig)]
+        pids = [by_sig[sig] for sig in sorted(by_sig)]
+        single_entry = len(pids) == 1
+        return [make_entry(pid, sid, mode, suppress_suffix=single_entry) for pid in pids]
 
     learnable_move_ids: set[int] = set()
     for mids in all_moves_by_pokemon.values():
@@ -575,6 +618,13 @@ def main() -> None:
         json.dump(abilities_json, f, ensure_ascii=False, separators=(",", ":"))
     with (OUT_DIR / "moves.json").open("w", encoding="utf-8") as f:
         json.dump(moves_json, f, ensure_ascii=False, separators=(",", ":"))
+
+    egg_groups_json = [
+        {"id": egid, "name": egg_group_names.get(egid, f"egg{egid}")}
+        for egid in sorted(egg_group_names)
+    ]
+    with (OUT_DIR / "egg_groups.json").open("w", encoding="utf-8") as f:
+        json.dump(egg_groups_json, f, ensure_ascii=False, separators=(",", ":"))
 
     available_modes = []
     for mode in MODES:

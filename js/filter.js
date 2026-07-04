@@ -1,9 +1,5 @@
 /**
  * 絞り込みロジック
- *
- * 進化・フォルムライン: 各エントリの e（リーフノード id の配列）でグループ化。
- * 分岐進化では共有の進化元が複数ラインに所属しうる。
- * ライン数・一騎打ち・解答表示: 単独ライン数 + 吸収されない分岐個体の連結成分数
  */
 const FilterEngine = {
   lineIds(p) {
@@ -27,6 +23,7 @@ const FilterEngine = {
     if (cond.kind === "type") return cond.typeId != null;
     if (cond.kind === "ability") return cond.abilityId != null;
     if (cond.kind === "move") return cond.moveId != null;
+    if (cond.kind === "egg") return cond.eggId != null;
     if (cond.kind === "stat") {
       return cond.statKey && cond.statValue !== "" && !Number.isNaN(Number(cond.statValue));
     }
@@ -36,6 +33,12 @@ const FilterEngine = {
   applyOne(pokemon, cond) {
     switch (cond.kind) {
       case "type":
+        if (cond.typeId === "single") {
+          return pokemon.filter((p) => {
+            const isSingle = p.t.length === 1;
+            return cond.op === "is_single" ? isSingle : !isSingle;
+          });
+        }
         return pokemon.filter((p) => {
           const has = p.t.includes(cond.typeId);
           return cond.op === "has" ? has : !has;
@@ -49,6 +52,12 @@ const FilterEngine = {
         return pokemon.filter((p) => {
           const has = p.m.includes(cond.moveId);
           return cond.op === "learn" ? has : !has;
+        });
+      case "egg":
+        return pokemon.filter((p) => {
+          const groups = p.g || [];
+          const has = groups.includes(cond.eggId);
+          return cond.op === "is" ? has : !has;
         });
       case "stat": {
         const n = Number(cond.statValue);

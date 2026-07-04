@@ -14,7 +14,7 @@
   const state = {
     modeKey: "all",
     modeLabel: "",
-    timeSec: 60,
+    timeSec: 120,
     conditions: [],
     hits: [],
     duelActive: false,
@@ -31,7 +31,11 @@
 
   const setupState = {
     selectedMode: null,
+    randomFirst: true,
   };
+
+  const TWEET_LIMIT = 280;
+  const URL_TWEET_LEN = 23;
 
   function resetSetupSelection() {
     setupState.selectedMode = null;
@@ -45,6 +49,11 @@
     $("#btn-mode-all").classList.toggle("pressed", mode === "all");
     $("#btn-mode-gen").classList.toggle("pressed", mode === "gen");
     $("#btn-start-setup").hidden = false;
+  }
+
+  function updateRandomFirstUI() {
+    $("#btn-random-on").classList.toggle("pressed", setupState.randomFirst);
+    $("#btn-random-off").classList.toggle("pressed", !setupState.randomFirst);
   }
 
   function getSelectedGameMode() {
@@ -102,6 +111,8 @@
       abilityName: "",
       moveId: null,
       moveName: "",
+      eggId: null,
+      eggName: "",
       statKey: "",
       statValue: "",
       op: "",
@@ -144,6 +155,29 @@
     }
   }
 
+  function triggerScreenShake() {
+    const screen = $("#screen-game");
+    if (!screen) return;
+    screen.classList.remove("screen-shake");
+    void screen.offsetWidth;
+    screen.classList.add("screen-shake");
+    setTimeout(() => screen.classList.remove("screen-shake"), 360);
+  }
+
+  function triggerDuelPopupShake() {
+    const popup = document.querySelector("#overlay-duel .duel-popup");
+    if (!popup) return;
+    popup.classList.remove("screen-shake");
+    void popup.offsetWidth;
+    popup.classList.add("screen-shake");
+    setTimeout(() => popup.classList.remove("screen-shake"), 360);
+  }
+
+  function getConditionKindsForMode() {
+    if (state.modeKey === "all") return CONFIG.conditionKinds;
+    return CONFIG.conditionKinds.filter((k) => k.value !== "egg");
+  }
+
   function hasActiveConditions() {
     return state.conditions.some((c) => !c.excluded && FilterEngine.isComplete(c));
   }
@@ -158,17 +192,34 @@
   function appendDobon() {
     const stack = $("#dobon-stack");
     if (!stack) return;
-    const item = document.createElement("div");
-    item.className = "dobon-item";
-    item.innerHTML = `<img src="${CONFIG.imgFolder}/dobon.png" alt="ドボン" class="dobon-image"><p class="dobon-note">※除外ボタンを押して継続してください</p>`;
-    stack.appendChild(item);
+    let item = stack.querySelector(".dobon-item");
+    if (!item) {
+      item = document.createElement("div");
+      item.className = "dobon-item";
+      item.innerHTML = `<img src="${CONFIG.imgFolder}/dobon.png" alt="ドボン" class="dobon-image"><p class="dobon-note">※除外ボタンを押して継続してください</p>`;
+      stack.appendChild(item);
+    }
     stack.hidden = false;
+    const img = item.querySelector(".dobon-image");
+    if (img) {
+      const onSlamEnd = (e) => {
+        if (e.animationName !== "dobon-slam") return;
+        img.removeEventListener("animationend", onSlamEnd);
+        triggerScreenShake();
+      };
+      img.removeEventListener("animationend", onSlamEnd);
+      img.classList.remove("dobon-slam");
+      void img.offsetWidth;
+      img.classList.add("dobon-slam");
+      img.addEventListener("animationend", onSlamEnd);
+    }
   }
 
   function showResultStats() {
     const statsBlock = $("#result-stats-block");
     if (statsBlock) statsBlock.hidden = false;
-    $("#result-answer").hidden = true;
+    const wrap = $("#result-answer-wrap");
+    if (wrap) wrap.hidden = true;
   }
 
   function hideResultStats() {
@@ -186,6 +237,7 @@
         typeId: c.typeId,
         abilityId: c.abilityId,
         moveId: c.moveId,
+        eggId: c.eggId,
         statKey: c.statKey,
         statValue: c.statValue,
       }))
@@ -214,6 +266,8 @@
     hideDuelUI();
     clearTimerDisplay();
     $("#btn-reveal").hidden = true;
+    const shareBtn = $("#btn-share-x");
+    if (shareBtn) shareBtn.hidden = true;
     const bannerZone = $("#banner-zone");
     if (bannerZone) bannerZone.classList.remove("banner-zone--duel");
   }
@@ -258,6 +312,7 @@
     overlay.setAttribute("aria-hidden", "false");
     showDuelUI();
     startTimer();
+    triggerDuelPopupShake();
     setTimeout(() => {
       overlay.classList.remove("active");
       overlay.setAttribute("aria-hidden", "true");
@@ -313,6 +368,12 @@
       if (cond.typeId == null) {
         return '<button type="button" class="btn-pick btn-pick-type">タイプを選ぶ</button>';
       }
+      if (cond.typeId === "single") {
+        return `<button type="button" class="btn-pick btn-pick-type picked">
+          <img src="${CONFIG.imgFolder}/only.png" alt="" class="type-icon-sm">
+          <span>単タイプ</span>
+        </button>`;
+      }
       const t = DataStore.typeById.get(cond.typeId);
       const icon = t ? `${CONFIG.imgFolder}/${t.icon}.png` : "";
       return `<button type="button" class="btn-pick btn-pick-type picked">
@@ -322,7 +383,7 @@
     }
     if (cond.kind === "ability") {
       if (cond.abilityId == null) {
-        return '<button type="button" class="btn-pick btn-pick-ability">特性を選ぶ</button>';
+        return '<button type="button" class="btn-pick btn-pick-ability">とくせいを選ぶ</button>';
       }
       return `<button type="button" class="btn-pick btn-pick-ability picked">${escapeHtml(cond.abilityName)}</button>`;
     }
@@ -331,6 +392,12 @@
         return '<button type="button" class="btn-pick btn-pick-move">わざを選ぶ</button>';
       }
       return `<button type="button" class="btn-pick btn-pick-move picked">${escapeHtml(cond.moveName)}</button>`;
+    }
+    if (cond.kind === "egg") {
+      if (cond.eggId == null) {
+        return '<button type="button" class="btn-pick btn-pick-egg">タマゴグループを選ぶ</button>';
+      }
+      return `<button type="button" class="btn-pick btn-pick-egg picked">${escapeHtml(cond.eggName)}</button>`;
     }
     if (cond.kind === "stat") {
       const opts =
@@ -349,6 +416,12 @@
   function renderOpCell(cond) {
     if (!cond.kind) return '<span class="cell-placeholder">—</span>';
 
+    if (cond.kind === "type" && cond.typeId === "single") {
+      return `<div class="op-toggle">
+        <button type="button" class="btn-op${cond.op === "is_single" ? " active" : ""}" data-op="is_single">である</button>
+        <button type="button" class="btn-op${cond.op === "not_single" ? " active" : ""}" data-op="not_single">でない</button>
+      </div>`;
+    }
     if (cond.kind === "type" || cond.kind === "ability") {
       return `<div class="op-toggle">
         <button type="button" class="btn-op${cond.op === "has" ? " active" : ""}" data-op="has">持つ</button>
@@ -359,6 +432,12 @@
       return `<div class="op-toggle">
         <button type="button" class="btn-op${cond.op === "learn" ? " active" : ""}" data-op="learn">覚える</button>
         <button type="button" class="btn-op${cond.op === "notlearn" ? " active" : ""}" data-op="notlearn">覚えない</button>
+      </div>`;
+    }
+    if (cond.kind === "egg") {
+      return `<div class="op-toggle">
+        <button type="button" class="btn-op${cond.op === "is" ? " active" : ""}" data-op="is">である</button>
+        <button type="button" class="btn-op${cond.op === "not" ? " active" : ""}" data-op="not">でない</button>
       </div>`;
     }
     if (cond.kind === "stat") {
@@ -374,9 +453,11 @@
     const tbody = $("#conditions-body");
     tbody.innerHTML = state.conditions
       .map((cond, idx) => {
-        const kindOpts = CONFIG.conditionKinds.map(
-          (k) => `<option value="${k.value}"${cond.kind === k.value ? " selected" : ""}>${k.label}</option>`
-        ).join("");
+        const kindOpts = getConditionKindsForMode()
+          .map(
+            (k) => `<option value="${k.value}"${cond.kind === k.value ? " selected" : ""}>${k.label}</option>`
+          )
+          .join("");
         return `<tr data-id="${cond.id}"${cond.excluded ? ' class="condition-excluded"' : ""}>
           <td class="col-no">${idx + 1}</td>
           <td class="col-kind">
@@ -410,6 +491,8 @@
         cond.abilityName = "";
         cond.moveId = null;
         cond.moveName = "";
+        cond.eggId = null;
+        cond.eggName = "";
         cond.statKey = "";
         cond.statValue = "";
         cond.op = "";
@@ -428,6 +511,10 @@
       tr.querySelector(".btn-pick-move")?.addEventListener("click", () => {
         editingRowId = cond.id;
         openSearch("move");
+      });
+      tr.querySelector(".btn-pick-egg")?.addEventListener("click", () => {
+        editingRowId = cond.id;
+        openEggPicker();
       });
 
       tr.querySelector(".select-stat")?.addEventListener("change", (e) => {
@@ -459,6 +546,7 @@
         if (!ok) return;
         state.conditions = state.conditions.filter((c) => c.id !== cond.id);
         if (state.conditions.length === 0) state.conditions.push(newCondition());
+        clearDobonStack();
         renderConditions();
         refreshResults();
       });
@@ -482,7 +570,7 @@
 
   function openTypePicker() {
     const list = $("#type-list");
-    list.innerHTML = DataStore.types
+    const typeButtons = DataStore.types
       .map(
         (t) => `<button type="button" class="type-btn" data-id="${t.id}">
           <img src="${CONFIG.imgFolder}/${t.icon}.png" alt="">
@@ -490,14 +578,27 @@
         </button>`
       )
       .join("");
+    list.innerHTML =
+      typeButtons +
+      `<button type="button" class="type-btn" data-id="single">
+        <img src="${CONFIG.imgFolder}/only.png" alt="">
+        <span>単タイプ</span>
+      </button>`;
     list.querySelectorAll(".type-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         const cond = state.conditions.find((c) => c.id === editingRowId);
         if (!cond) return;
-        const tid = Number(btn.dataset.id);
-        const t = DataStore.typeById.get(tid);
-        cond.typeId = tid;
-        cond.typeName = t?.name ?? "";
+        if (btn.dataset.id === "single") {
+          cond.typeId = "single";
+          cond.typeName = "単タイプ";
+          cond.op = "";
+        } else {
+          const tid = Number(btn.dataset.id);
+          const t = DataStore.typeById.get(tid);
+          cond.typeId = tid;
+          cond.typeName = t?.name ?? "";
+          cond.op = "";
+        }
         closeTypePicker();
         renderConditions();
         refreshResults();
@@ -515,10 +616,45 @@
     editingRowId = null;
   }
 
+  function openEggPicker() {
+    const list = $("#egg-list");
+    list.innerHTML = DataStore.eggGroups
+      .map(
+        (g) => `<button type="button" class="type-btn" data-id="${g.id}">
+          <span>${escapeHtml(g.name)}</span>
+        </button>`
+      )
+      .join("");
+    list.querySelectorAll(".type-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const cond = state.conditions.find((c) => c.id === editingRowId);
+        if (!cond) return;
+        const eid = Number(btn.dataset.id);
+        const g = DataStore.eggById.get(eid);
+        cond.eggId = eid;
+        cond.eggName = g?.name ?? "";
+        cond.op = "is";
+        closeEggPicker();
+        renderConditions();
+        refreshResults();
+      });
+    });
+    const ov = $("#overlay-egg");
+    ov.classList.add("active");
+    ov.setAttribute("aria-hidden", "false");
+  }
+
+  function closeEggPicker() {
+    const ov = $("#overlay-egg");
+    ov.classList.remove("active");
+    ov.setAttribute("aria-hidden", "true");
+    editingRowId = null;
+  }
+
   function openSearch(kind) {
     searchKind = kind;
     const input = $("#search-input");
-    input.placeholder = kind === "ability" ? "特性名で検索" : "わざ名で検索";
+    input.placeholder = kind === "ability" ? "とくせい名で検索" : "わざ名で検索";
     input.value = "";
     renderSearchResults("");
     const ov = $("#overlay-search");
@@ -591,6 +727,43 @@
     });
   }
 
+  function drawRandomFirstCondition() {
+    const kinds =
+      state.modeKey === "all"
+        ? ["type", "move", "ability", "egg"]
+        : ["type", "move", "ability"];
+    for (let attempt = 0; attempt < 500; attempt++) {
+      const cond = newCondition();
+      cond.kind = kinds[Math.floor(Math.random() * kinds.length)];
+      if (cond.kind === "type") {
+        const t = DataStore.types[Math.floor(Math.random() * DataStore.types.length)];
+        cond.typeId = t.id;
+        cond.typeName = t.name;
+        cond.op = "has";
+      } else if (cond.kind === "ability") {
+        const a = DataStore.abilities[Math.floor(Math.random() * DataStore.abilities.length)];
+        cond.abilityId = a.id;
+        cond.abilityName = a.name;
+        cond.op = "has";
+      } else if (cond.kind === "egg") {
+        const g = DataStore.eggGroups[Math.floor(Math.random() * DataStore.eggGroups.length)];
+        cond.eggId = g.id;
+        cond.eggName = g.name;
+        cond.op = "is";
+      } else {
+        const m = DataStore.moves[Math.floor(Math.random() * DataStore.moves.length)];
+        cond.moveId = m.id;
+        cond.moveName = m.name;
+        cond.op = "learn";
+      }
+      const hits = FilterEngine.applyAll(DataStore.pokemon, [cond]);
+      const { count, lines } = FilterEngine.countResults(hits);
+      if (count <= 50 || lines <= 20) continue;
+      return cond;
+    }
+    return newCondition();
+  }
+
   function updateCheatButtonUI() {
     const btnCheat = $("#btn-cheat");
     if (!btnCheat) return;
@@ -598,9 +771,13 @@
     btnCheat.classList.toggle("cheat-used", state.cheatEverUsed && !state.answerPreview);
   }
 
-  function resetGame() {
+  function resetGame({ withRandomFirst = false } = {}) {
     resetDuelState();
-    state.conditions = [newCondition()];
+    if (withRandomFirst) {
+      state.conditions = [drawRandomFirstCondition()];
+    } else {
+      state.conditions = [newCondition()];
+    }
     state.hits = [];
     state.answerPreview = false;
     state.cheatEverUsed = false;
@@ -620,7 +797,7 @@
     state.modeKey = modeKey;
     state.modeLabel = modeLabel;
     state.timeSec = Number($("#select-time").value);
-    resetGame();
+    resetGame({ withRandomFirst: setupState.randomFirst });
     const bannerTitle = $("#banner-title");
     if (bannerTitle) bannerTitle.textContent = modeLabel;
     showScreen("game");
@@ -633,18 +810,24 @@
       .join("");
   }
 
-  function renderAnswerList() {
+  function renderAnswerList({ showShare = false } = {}) {
     const groups = FilterEngine.groupHitsForDisplay(state.hits);
     const el = $("#result-answer");
     el.innerHTML = groups
       .map((names) => `<p class="answer-line">${names.map(formatPokemonName).join("・")}</p>`)
       .join("");
-    el.hidden = false;
+    const wrap = $("#result-answer-wrap");
+    if (wrap) wrap.hidden = false;
+    const shareBtn = $("#btn-share-x");
+    if (shareBtn) shareBtn.hidden = !showShare;
     hideResultStats();
   }
 
   function hideAnswerList() {
-    $("#result-answer").hidden = true;
+    const wrap = $("#result-answer-wrap");
+    if (wrap) wrap.hidden = true;
+    const shareBtn = $("#btn-share-x");
+    if (shareBtn) shareBtn.hidden = true;
     showResultStats();
   }
 
@@ -656,8 +839,62 @@
     state.answerPreview = false;
     state.cheatEverUsed = false;
     updateCheatButtonUI();
-    renderAnswerList();
+    renderAnswerList({ showShare: true });
     $("#btn-reveal").hidden = true;
+  }
+
+  function formatConditionForShare(cond) {
+    if (cond.kind === "type") {
+      if (cond.typeId === "single") {
+        const mark = cond.op === "is_single" ? "⭕" : "❌";
+        return `単タイプ${mark}`;
+      }
+      const mark = cond.op === "has" ? "⭕" : "❌";
+      return `${cond.typeName}${mark}`;
+    }
+    if (cond.kind === "ability") {
+      const mark = cond.op === "has" ? "⭕" : "❌";
+      return `${cond.abilityName}${mark}`;
+    }
+    if (cond.kind === "move") {
+      const mark = cond.op === "learn" ? "⭕" : "❌";
+      return `${cond.moveName}${mark}`;
+    }
+    if (cond.kind === "egg") {
+      const mark = cond.op === "is" ? "⭕" : "❌";
+      return `${cond.eggName}${mark}`;
+    }
+    if (cond.kind === "stat") {
+      const label = CONFIG.statLabels[cond.statKey] || cond.statKey;
+      const mark = cond.op === "gte" ? "↑" : "↓";
+      return `${label}${cond.statValue} ${mark}`;
+    }
+    return "";
+  }
+
+  function buildShareText() {
+    const url = CONFIG.shareUrl || "https://kurosana.github.io/SnipeShot/";
+    const { lines } = FilterEngine.countResults(state.hits);
+    const intro = `以下を満たすポケモンは${lines}系統だけ！わかるかな？`;
+    const footer = "↓ねらいうちゲームで遊ぼう！";
+    const conditions = state.conditions
+      .filter((c) => !c.excluded && FilterEngine.isComplete(c))
+      .map(formatConditionForShare)
+      .filter(Boolean);
+    const fixedLen = intro.length + 1 + footer.length + 1 + url.length + 1;
+    const budget = TWEET_LIMIT - fixedLen - URL_TWEET_LEN + url.length;
+    let condText = conditions.join("\n");
+    if (condText.length > budget) {
+      const trimmed = condText.slice(0, Math.max(0, budget - 1));
+      condText = `${trimmed}……`;
+    }
+    return `${intro}\n${condText}\n${footer}\n${url}`.replace(/\n\n/g, "\n");
+  }
+
+  function openXShare() {
+    const text = buildShareText();
+    const shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+    window.open(shareUrl, "_blank", "noopener,noreferrer");
   }
 
   function toggleAnswerPreview() {
@@ -667,7 +904,7 @@
     try {
       if (state.answerPreview) {
         refreshResults({ skipDobon: true });
-        renderAnswerList();
+        renderAnswerList({ showShare: state.duelRevealed });
       } else {
         hideAnswerList();
       }
@@ -675,7 +912,7 @@
       console.error(e);
       state.answerPreview = prevPreview;
       if (state.answerPreview) {
-        renderAnswerList();
+        renderAnswerList({ showShare: state.duelRevealed });
       } else {
         hideAnswerList();
       }
@@ -806,6 +1043,7 @@
       }
       await DataStore.init();
       populateGenerationSelect();
+      updateRandomFirstUI();
       showScreen("start");
     } catch (e) {
       console.error(e);
@@ -832,6 +1070,16 @@
     selectSetupMode("gen");
   });
 
+  $("#btn-random-on").addEventListener("click", () => {
+    setupState.randomFirst = true;
+    updateRandomFirstUI();
+  });
+
+  $("#btn-random-off").addEventListener("click", () => {
+    setupState.randomFirst = false;
+    updateRandomFirstUI();
+  });
+
   $("#btn-start-setup").addEventListener("click", () => {
     const mode = getSelectedGameMode();
     if (mode) startGame(mode.key, mode.label);
@@ -844,7 +1092,7 @@
 
   $("#btn-restart").addEventListener("click", async () => {
     const ok = await confirmDialog("同じルールで初めから遊びますか？");
-    if (ok) resetGame();
+    if (ok) resetGame({ withRandomFirst: setupState.randomFirst });
   });
 
   $("#btn-cheat").addEventListener("click", toggleAnswerPreview);
@@ -860,6 +1108,7 @@
   });
 
   $("#btn-reveal").addEventListener("click", revealAnswer);
+  $("#btn-share-x").addEventListener("click", openXShare);
 
   $("#btn-cancel-duel").addEventListener("click", cancelDuelMode);
 
@@ -872,6 +1121,11 @@
   $("#btn-close-type").addEventListener("click", closeTypePicker);
   $("#overlay-type").addEventListener("click", (e) => {
     if (e.target === $("#overlay-type")) closeTypePicker();
+  });
+
+  $("#btn-close-egg").addEventListener("click", closeEggPicker);
+  $("#overlay-egg").addEventListener("click", (e) => {
+    if (e.target === $("#overlay-egg")) closeEggPicker();
   });
 
   $("#btn-close-search").addEventListener("click", closeSearch);

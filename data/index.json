@@ -4,7 +4,7 @@
       "key": "all",
       "label": "全ポケモン全わざ",
       "file": "mode_all.json",
-      "count": 1264
+      "count": 1261
     },
     {
       "key": "gen1",
@@ -46,7 +46,7 @@
       "key": "gen7",
       "label": "7世代",
       "file": "mode_gen7.json",
-      "count": 925
+      "count": 922
     },
     {
       "key": "pikabui",
@@ -58,7 +58,7 @@
       "key": "gen8",
       "label": "8世代",
       "file": "mode_gen8.json",
-      "count": 735
+      "count": 733
     },
     {
       "key": "bdsp",

@@ -16,7 +16,7 @@ const pick = (...subs) => data.filter((p) => subs.every((s) => p.n.includes(s)))
 const byName = (n) => data.filter((p) => p.n === n);
 
 const DUEL_CASES = [
-  { name: "全件", hits: data, count: 1264, lines: 604, duel: false },
+  { name: "全件", hits: data, count: 1261, lines: 604, duel: false },
   { name: "カラカラのみ", hits: byName("カラカラ"), count: 1, lines: 1, duel: false },
   {
     name: "カラカラ+両ガラガラ",
@@ -108,6 +108,54 @@ if (rf.count !== 103 || rf.lines !== 53 || FilterEngine.shouldDuel(rf.lines)) {
   failed++;
 } else {
   console.log("OK fire type");
+}
+
+const bugEgg = FilterEngine.applyAll(data, [
+  { kind: "egg", op: "is", eggId: 3, excluded: false },
+]);
+const re = FilterEngine.countResults(bugEgg);
+if (re.count !== 99) {
+  console.error(`FAIL bug egg: got count=${re.count}`);
+  failed++;
+} else {
+  console.log("OK bug egg");
+}
+
+const singleType = FilterEngine.applyAll(data, [
+  { kind: "type", op: "is_single", typeId: "single", excluded: false },
+]);
+const rs = FilterEngine.countResults(singleType);
+if (rs.count !== 556) {
+  console.error(`FAIL single type: got count=${rs.count}`);
+  failed++;
+} else {
+  console.log("OK single type");
+}
+
+const namesOf = (...expected) => {
+  const got = data.filter((p) => expected.includes(p.n)).map((p) => p.n);
+  const ok =
+    expected.length === got.length && expected.every((n) => got.includes(n));
+  if (!ok) {
+    console.error(`FAIL names expected ${JSON.stringify(expected)} got ${JSON.stringify(got)}`);
+    failed++;
+    return;
+  }
+  console.log(`OK names ${expected[0].slice(0, 4)}… (${expected.length})`);
+};
+
+namesOf("ゲッコウガ", "ゲッコウガ（サトシゲッコウガ）", "ゲッコウガ（メガゲッコウガ）");
+namesOf(
+  "ジガルデ（５０％フォルム）",
+  "ジガルデ（パーフェクトフォルム）",
+  "ジガルデ（１０％フォルム）",
+  "ジガルデ（メガジガルデ）"
+);
+if (data.some((p) => p.i === 10116)) {
+  console.error("FAIL greninja battle-bond pid 10116 should be excluded");
+  failed++;
+} else {
+  console.log("OK exclude battle-bond greninja");
 }
 
 if (failed > 0) {

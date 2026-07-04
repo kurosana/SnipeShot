@@ -63,6 +63,22 @@ body {
   position: relative;
 }
 
+.start-bg-icon {
+  position: absolute;
+  inset: 0;
+  width: min(55vw, 280px);
+  height: min(55vw, 280px);
+  margin: auto;
+  object-fit: contain;
+  opacity: 0.2;
+  pointer-events: none;
+  z-index: 0;
+}
+
+#screen-start::before {
+  content: none;
+}
+
 .app-version-wrap {
   position: absolute;
   top: max(0.6rem, env(safe-area-inset-top));
@@ -88,6 +104,8 @@ body {
 }
 
 .start-inner {
+  position: relative;
+  z-index: 1;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -260,7 +278,31 @@ body {
 
 .time-select-wrap {
   width: min(92vw, 340px);
+  margin-bottom: 1.25rem;
+}
+
+.random-first-wrap {
+  width: min(92vw, 340px);
   margin-bottom: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.random-first-label {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.random-first-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.random-first-buttons .btn-mode {
+  flex: 1;
+  padding: 0.85rem 0.5rem;
+  font-size: 1rem;
 }
 
 .time-label {
@@ -328,6 +370,20 @@ body {
 
 #screen-game.active {
   display: flex;
+}
+
+#screen-game.screen-shake {
+  animation: screen-shake 0.35s ease-in-out;
+}
+
+@keyframes screen-shake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-10px); }
+  30% { transform: translateX(10px); }
+  45% { transform: translateX(-8px); }
+  60% { transform: translateX(8px); }
+  75% { transform: translateX(-4px); }
+  90% { transform: translateX(4px); }
 }
 
 .banner-zone {
@@ -540,22 +596,39 @@ body {
 }
 
 tr.condition-excluded td {
-  opacity: 0.72;
+  background: rgba(91, 113, 124, 0.72);
+  color: var(--text);
 }
 
-tr.condition-excluded .col-no,
-tr.condition-excluded .col-kind,
-tr.condition-excluded .col-value,
-tr.condition-excluded .col-op {
-  background: rgba(186, 230, 253, 0.35);
-}
-
+tr.condition-excluded .btn-del,
+tr.condition-excluded .btn-exclude,
 tr.condition-excluded .select-kind,
-tr.condition-excluded .btn-pick,
 tr.condition-excluded .select-stat,
 tr.condition-excluded .input-stat,
 tr.condition-excluded .btn-op {
-  opacity: 0.85;
+  background: #b3b3b3;
+  border-color: rgba(70, 88, 97, 0.85);
+}
+
+tr.condition-excluded .btn-exclude.active {
+  background: #b3b3b3;
+  color: var(--text);
+  border-color: var(--btn-primary);
+}
+
+tr.condition-excluded .btn-pick {
+  background: #82a1b1;
+  border-color: rgba(70, 88, 97, 0.85);
+}
+
+tr.condition-excluded .btn-pick.picked {
+  background: #b3b3b3;
+}
+
+tr.condition-excluded .btn-op.active {
+  background: #015f96;
+  color: #fff;
+  border-color: #015f96;
 }
 
 .btn-exclude {
@@ -739,6 +812,21 @@ tr.condition-excluded .btn-op {
   max-width: 7.5rem;
 }
 
+.dobon-image.dobon-slam {
+  animation: dobon-slam 0.35s ease-out;
+}
+
+@keyframes dobon-slam {
+  0% {
+    transform: scale(1.5);
+    opacity: 0.3;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
 .result-main {
   flex: 1 1 auto;
   min-width: 0;
@@ -851,8 +939,55 @@ tr.condition-excluded .btn-op {
   color: var(--text);
 }
 
+.result-zone:has(#result-answer-wrap:not([hidden])) {
+  min-height: 9.5rem;
+  padding-top: 0.85rem;
+}
+
+.result-answer-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  width: 100%;
+  max-width: 100%;
+}
+
+.result-answer-wrap[hidden] {
+  display: none !important;
+}
+
 .result-answer {
-  margin: 0.25rem 0;
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  max-height: 40vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.btn-share-x {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0.55rem 1.25rem;
+  font-size: 0.9rem;
+  font-weight: bold;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: #000;
+  color: #fff;
+  cursor: pointer;
+  touch-action: manipulation;
+  white-space: nowrap;
+}
+
+.btn-share-x[hidden] {
+  display: none !important;
+}
+
+.btn-share-x:hover {
+  background: #222;
 }
 
 .answer-line {
@@ -1097,7 +1232,11 @@ tr.condition-excluded .btn-op {
   margin: 0;
 }
 
-/* 一騎打ちポップアップ */
+.type-btn:not(:has(img)) {
+  justify-content: center;
+}
+
+/* ねらいうちモードポップアップ */
 .overlay-duel {
   align-items: center;
   justify-content: center;
@@ -1108,13 +1247,17 @@ tr.condition-excluded .btn-op {
 
 .duel-popup {
   position: relative;
-  background: #fff;
-  border-radius: var(--radius);
+  background: transparent;
+  border-radius: 0;
   padding: 0 1.25rem 1.25rem;
   width: min(88vw, 300px);
   text-align: center;
-  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.3);
+  box-shadow: none;
   margin-top: 3rem;
+}
+
+#overlay-duel .duel-popup.screen-shake {
+  animation: screen-shake 0.35s ease-in-out;
 }
 
 .duel-image {
@@ -1127,11 +1270,18 @@ tr.condition-excluded .btn-op {
 }
 
 .duel-timer {
+  display: inline-block;
   margin: 0;
-  font-size: clamp(1.5rem, 7vw, 2rem);
+  padding: 0.7rem 1.7rem;
+  min-width: min(36vw, 140px);
+  font-size: clamp(3rem, 14vw, 4rem);
   font-weight: bold;
   font-variant-numeric: tabular-nums;
+  line-height: 1.1;
   color: var(--text);
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.22);
 }
 
 @media (min-width: 400px) {
