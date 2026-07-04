@@ -2,9 +2,22 @@
 # ねらいうちゲーム .gitignore
 # ============================================
 
-# ローカル開発用
+# ローカル開発用（GitHub Pages には不要）
 start.bat
 local.debug
+説明文書反映.bat
+
+# 説明文の編集ソース（生成結果は config.json に反映）
+Explain.md
+
+# ローカル用スクリプト
+scripts/write_bats.py
+scripts/build_explain.py
+
+# 検証・作業用
+Trash/
+_verify*.py
+_out.txt
 
 # 秘密情報
 .env
@@ -27,8 +40,9 @@ Desktop.ini
 node_modules/
 npm-debug.log*
 
-# 不要フォルダ
-Trush/
+# Python
+__pycache__/
+*.pyc
 
 # 一時ファイル
 *.tmp

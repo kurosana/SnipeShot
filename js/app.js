@@ -42,6 +42,7 @@
     $("#btn-mode-all").classList.remove("pressed");
     $("#btn-mode-gen").classList.remove("pressed");
     $("#btn-start-setup").hidden = true;
+    updateGenerationSelectState();
   }
 
   function selectSetupMode(mode) {
@@ -49,6 +50,13 @@
     $("#btn-mode-all").classList.toggle("pressed", mode === "all");
     $("#btn-mode-gen").classList.toggle("pressed", mode === "gen");
     $("#btn-start-setup").hidden = false;
+    updateGenerationSelectState();
+  }
+
+  function updateGenerationSelectState() {
+    const sel = $("#select-generation");
+    if (!sel) return;
+    sel.disabled = setupState.selectedMode !== "gen";
   }
 
   function updateRandomFirstUI() {
@@ -633,7 +641,6 @@
         const g = DataStore.eggById.get(eid);
         cond.eggId = eid;
         cond.eggName = g?.name ?? "";
-        cond.op = "is";
         closeEggPicker();
         renderConditions();
         refreshResults();
@@ -728,13 +735,22 @@
   }
 
   function drawRandomFirstCondition() {
-    const kinds =
+    const kindPool =
       state.modeKey === "all"
-        ? ["type", "move", "ability", "egg"]
-        : ["type", "move", "ability"];
+        ? [
+            ...Array(3).fill("move"),
+            ...Array(2).fill("ability"),
+            ...Array(1).fill("type"),
+            ...Array(1).fill("egg"),
+          ]
+        : [
+            ...Array(3).fill("move"),
+            ...Array(2).fill("ability"),
+            ...Array(1).fill("type"),
+          ];
     for (let attempt = 0; attempt < 500; attempt++) {
       const cond = newCondition();
-      cond.kind = kinds[Math.floor(Math.random() * kinds.length)];
+      cond.kind = kindPool[Math.floor(Math.random() * kindPool.length)];
       if (cond.kind === "type") {
         const t = DataStore.types[Math.floor(Math.random() * DataStore.types.length)];
         cond.typeId = t.id;
@@ -930,22 +946,24 @@
     return CONFIG.rulesDetailHtml || "";
   }
 
+  function getRulesRulingHtml() {
+    return CONFIG.rulesRulingHtml || "";
+  }
+
   function buildStartRulesHtml() {
     const basic = getRulesBasicHtml();
-    return `${basic}<p class="rules-help-hint">詳しくはゲーム画面のヘルプボタンで！</p>`;
+    return `${basic}<p class="rules-help-hint">詳しくはゲーム画面のヘルプ・詳細裁定ボタンで！</p>`;
   }
 
-  function buildOverlayRulesHtml() {
-    const basic = getRulesBasicHtml();
-    const detail = getRulesDetailHtml();
-    if (!detail) return basic;
-    return `${basic}<div class="rules-detail">${detail}</div>`;
-  }
-
-  function openRulesOverlay() {
+  function openRulesOverlay(kind) {
     const body = $("#rules-overlay-body");
+    const title = $("#rules-overlay-title");
+    const html = kind === "ruling" ? getRulesRulingHtml() : getRulesDetailHtml();
     if (body) {
-      body.innerHTML = buildOverlayRulesHtml();
+      body.innerHTML = html;
+    }
+    if (title) {
+      title.textContent = kind === "ruling" ? "詳細裁定" : "ヘルプ";
     }
     const ov = $("#overlay-rules");
     ov.classList.add("active");
@@ -987,9 +1005,10 @@
       const titleEl = $("#app-title");
       if (titleEl) titleEl.textContent = cfg.appTitle;
     }
-    if (cfg.rulesBasicHtml || cfg.rulesDetailHtml || cfg.rulesHtml) {
+    if (cfg.rulesBasicHtml || cfg.rulesDetailHtml || cfg.rulesRulingHtml || cfg.rulesHtml) {
       if (cfg.rulesBasicHtml) CONFIG.rulesBasicHtml = cfg.rulesBasicHtml;
       if (cfg.rulesDetailHtml) CONFIG.rulesDetailHtml = cfg.rulesDetailHtml;
+      if (cfg.rulesRulingHtml) CONFIG.rulesRulingHtml = cfg.rulesRulingHtml;
       if (cfg.rulesHtml) CONFIG.rulesHtml = cfg.rulesHtml;
       const box = $("#rules-box");
       if (box) box.innerHTML = buildStartRulesHtml();
@@ -1054,7 +1073,7 @@
 
   // --- events ---
   $("#btn-to-setup").addEventListener("click", () => {
-    resetSetupSelection();
+    selectSetupMode("all");
     showScreen("setup");
   });
   $("#btn-back-start").addEventListener("click", () => {
@@ -1112,7 +1131,8 @@
 
   $("#btn-cancel-duel").addEventListener("click", cancelDuelMode);
 
-  $("#btn-rules-help").addEventListener("click", openRulesOverlay);
+  $("#btn-rules-help").addEventListener("click", () => openRulesOverlay("detail"));
+  $("#btn-rules-ruling").addEventListener("click", () => openRulesOverlay("ruling"));
   $("#btn-close-rules").addEventListener("click", closeRulesOverlay);
   $("#overlay-rules").addEventListener("click", (e) => {
     if (e.target === $("#overlay-rules")) closeRulesOverlay();

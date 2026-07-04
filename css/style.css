@@ -276,6 +276,13 @@ body {
   max-width: 100%;
 }
 
+.select-generation:disabled {
+  background: #ececec;
+  color: var(--text-muted);
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
 .time-select-wrap {
   width: min(92vw, 340px);
   margin-bottom: 1.25rem;
@@ -771,6 +778,7 @@ tr.condition-excluded .btn-op.active {
 }
 
 .result-zone-inner {
+  position: relative;
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -968,10 +976,13 @@ tr.condition-excluded .btn-op.active {
 }
 
 .btn-share-x {
-  flex: 0 0 auto;
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 2;
   margin: 0;
-  padding: 0.55rem 1.25rem;
-  font-size: 0.9rem;
+  padding: 0.37rem 0.85rem;
+  font-size: 0.6rem;
   font-weight: bold;
   border: none;
   border-radius: var(--radius-sm);

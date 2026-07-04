@@ -4,8 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>ねらいうちゲーム</title>
+  <meta name="description" content="ポケモンを条件で絞り込むねらいうちゲーム">
   <link rel="icon" href="Img/icon.jpg" type="image/jpeg">
-  <link rel="stylesheet" href="css/style.css?v=1.6.0">
+  <link rel="apple-touch-icon" href="Img/icon.jpg">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="ねらいうちゲーム">
+  <meta property="og:description" content="ポケモンを条件で絞り込むねらいうちゲーム">
+  <meta property="og:image" content="https://kurosana.github.io/SnipeShot/Img/icon.jpg">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:image" content="https://kurosana.github.io/SnipeShot/Img/icon.jpg">
+  <link rel="stylesheet" href="css/style.css?v=1.6.1">
 </head>
 <body>
   <div id="app">
@@ -32,7 +40,7 @@
           <button type="button" class="btn-mode btn-mode-all" id="btn-mode-all">全ポケモン全わざ</button>
           <div class="mode-gen-wrap">
             <button type="button" class="btn-mode btn-mode-gen" id="btn-mode-gen">世代指定</button>
-            <select id="select-generation" class="select-generation" aria-label="世代を選択">
+            <select id="select-generation" class="select-generation" aria-label="世代を選択" disabled>
               <!-- JS で生成 -->
             </select>
           </div>
@@ -76,6 +84,7 @@
         </div>
         <div class="banner-center" id="banner-center">
           <div class="banner-title-row" id="banner-title-row">
+            <button type="button" class="btn-banner btn-rules-help" id="btn-rules-ruling" aria-label="詳細裁定">詳細裁定</button>
             <h1 class="banner-title" id="banner-title"></h1>
             <button type="button" class="btn-banner btn-rules-help" id="btn-rules-help" aria-label="ヘルプ">ヘルプ</button>
           </div>
@@ -109,6 +118,7 @@
 
       <footer class="result-zone" id="result-zone">
         <div class="result-zone-inner">
+          <button type="button" class="btn-share-x" id="btn-share-x" hidden>Xで共有！</button>
           <div class="result-main">
             <div class="result-stats-block" id="result-stats-block">
               <div class="result-legend">
@@ -129,7 +139,6 @@
               <div class="dobon-stack" id="dobon-stack" hidden></div>
             </div>
             <div class="result-answer-wrap" id="result-answer-wrap" hidden>
-              <button type="button" class="btn-share-x" id="btn-share-x" hidden>Xで共有！</button>
               <div class="result-answer" id="result-answer"></div>
             </div>
             <button type="button" class="btn-reveal" id="btn-reveal" hidden>解答発表</button>
@@ -193,7 +202,7 @@
   <div id="overlay-rules" class="overlay" aria-hidden="true">
     <div class="overlay-inner rules-overlay-inner">
       <div class="overlay-header">
-        <h2 class="overlay-title">ヘルプ</h2>
+        <h2 class="overlay-title" id="rules-overlay-title">ヘルプ</h2>
         <button type="button" class="btn-close-overlay" id="btn-close-rules">閉じる</button>
       </div>
       <div class="rules-box rules-box-overlay" id="rules-overlay-body"></div>

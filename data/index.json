@@ -4,7 +4,7 @@
       "key": "all",
       "label": "全ポケモン全わざ",
       "file": "mode_all.json",
-      "count": 1261
+      "count": 1255
     },
     {
       "key": "gen1",
@@ -28,7 +28,7 @@
       "key": "gen4",
       "label": "4世代",
       "file": "mode_gen4.json",
-      "count": 508
+      "count": 504
     },
     {
       "key": "gen5",
@@ -76,13 +76,13 @@
       "key": "gen9",
       "label": "9世代",
       "file": "mode_gen9.json",
-      "count": 833
+      "count": 828
     },
     {
       "key": "champions",
       "label": "チャンピオンズ",
       "file": "mode_champions.json",
-      "count": 278
+      "count": 277
     }
   ],
   "stats": [

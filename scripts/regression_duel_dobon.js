@@ -16,7 +16,7 @@ const pick = (...subs) => data.filter((p) => subs.every((s) => p.n.includes(s)))
 const byName = (n) => data.filter((p) => p.n === n);
 
 const DUEL_CASES = [
-  { name: "全件", hits: data, count: 1261, lines: 604, duel: false },
+  { name: "全件", hits: data, count: 1255, lines: 604, duel: false },
   { name: "カラカラのみ", hits: byName("カラカラ"), count: 1, lines: 1, duel: false },
   {
     name: "カラカラ+両ガラガラ",
@@ -157,6 +157,104 @@ if (data.some((p) => p.i === 10116)) {
 } else {
   console.log("OK exclude battle-bond greninja");
 }
+
+function assertNames(label, expected) {
+  const got = data.filter((p) => expected.includes(p.n)).map((p) => p.n);
+  const ok =
+    expected.length === got.length && expected.every((n) => got.includes(n));
+  if (!ok) {
+    console.error(`FAIL ${label}: expected ${JSON.stringify(expected)} got ${JSON.stringify(got.sort())}`);
+    failed++;
+    return;
+  }
+  console.log(`OK ${label}`);
+}
+
+function assertAbsent(label, names) {
+  const got = data.filter((p) => names.includes(p.n)).map((p) => p.n);
+  if (got.length) {
+    console.error(`FAIL ${label}: should be absent got ${JSON.stringify(got)}`);
+    failed++;
+    return;
+  }
+  console.log(`OK ${label}`);
+}
+
+// A区分統合（ピカチュウ除く）— フォルム差_表示調査.md A表
+assertNames("A merge ウッウ", ["ウッウ"]);
+assertAbsent("A merge ウッウ alt", ["ウッウ（うのみのすがた）", "ウッウ（まるのみのすがた）"]);
+assertNames("A merge コライドン", ["コライドン"]);
+assertAbsent("A merge コライドン alt", ["コライドン（せいげんけいたい）", "コライドン（しっそうけいたい）"]);
+assertNames("A merge ザルード", ["ザルード"]);
+assertAbsent("A merge ザルード alt", ["ザルード（とうちゃん）"]);
+assertNames("A merge マギアナ default", ["マギアナ"]);
+assertAbsent("A merge マギアナ alt", ["マギアナ（５００ねんまえのいろ）"]);
+assertNames("A merge ミミッキュ", ["ミミッキュ"]);
+assertAbsent("A merge ミミッキュ alt", ["ミミッキュ（ばれたすがた）", "ミミッキュ（ばけたすがた）"]);
+assertNames("A merge ミライドン", ["ミライドン"]);
+assertAbsent("A merge ミライドン alt", ["ミライドン（リミテッドモード）", "ミライドン（コンプリートモード）"]);
+assertNames("A pikachu cosplay", [
+  "ピカチュウ",
+  "ピカチュウ（ハードロック・ピカチュウ）",
+  "ピカチュウ（マダム・ピカチュウ）",
+  "ピカチュウ（アイドル・ピカチュウ）",
+  "ピカチュウ（ドクター・ピカチュウ）",
+  "ピカチュウ（マスクド・ピカチュウ）",
+  "ピカチュウ（おきがえピカチュウ）",
+]);
+
+// B-1 種族値差（全件）
+assertNames("B-1 イダイトウ", ["イダイトウ（オスのすがた）", "イダイトウ（メスのすがた）"]);
+assertNames("B-1 イルカマン", ["イルカマン（ナイーブフォルム）", "イルカマン（マイティフォルム）"]);
+assertNames("B-1 ギルガルド", ["ギルガルド（シールドフォルム）", "ギルガルド（ブレードフォルム）"]);
+assertNames("B-1 コオリッポ", ["コオリッポ（アイスフェイス）", "コオリッポ（ナイスフェイス）"]);
+assertNames("B-1 バケッチャ", [
+  "バケッチャ（ふつうのサイズ）",
+  "バケッチャ（ちいさいサイズ）",
+  "バケッチャ（おおきいサイズ）",
+  "バケッチャ（とくだいサイズ）",
+]);
+assertNames("B-1 パンプジン", [
+  "パンプジン（ふつうのサイズ）",
+  "パンプジン（ちいさいサイズ）",
+  "パンプジン（おおきいサイズ）",
+  "パンプジン（とくだいサイズ）",
+]);
+assertNames("B-1 メテノ core", ["メテノ（りゅうせいのすがた）", "メテノ（あかいろのコア）"]);
+assertNames("B-1 ヨワシ", ["ヨワシ（たんどくのすがた）", "ヨワシ（むれたすがた）"]);
+
+// B-2 タイプ差（全件）
+assertNames("B-2 オドリドリ", [
+  "オドリドリ（めらめらスタイル）",
+  "オドリドリ（ぱちぱちスタイル）",
+  "オドリドリ（ふらふらスタイル）",
+  "オドリドリ（まいまいスタイル）",
+]);
+assertNames("B-2 ポワルン", [
+  "ポワルン",
+  "ポワルン（たいようのすがた）",
+  "ポワルン（あまみずのすがた）",
+  "ポワルン（ゆきぐものすがた）",
+]);
+
+// B-3 特性差（全件）
+assertNames("B-3 イキリンコ", ["イキリンコ（グリーンフェザー）", "イキリンコ（イエローフェザー）"]);
+assertNames("B-3 バスラオ", ["バスラオ（あかすじのすがた）", "バスラオ（あおすじのすがた）"]);
+
+// B-5 複合差（代表）
+assertNames("B-5 フシギバナ mega", ["フシギバナ", "フシギバナ（メガフシギバナ）"]);
+assertNames("B-5 ガラガラ alola", ["ガラガラ", "ガラガラ（アローラのすがた）"]);
+assertNames("B-5 ウインディ hisui", ["ウインディ", "ウインディ（ヒスイのすがた）"]);
+assertNames("B-5 テラパゴス", [
+  "テラパゴス（ノーマルフォルム）",
+  "テラパゴス（テラスタルフォルム）",
+  "テラパゴス（ステラフォルム）",
+]);
+assertNames("B-5 リザードン mega", [
+  "リザードン",
+  "リザードン（メガリザードンＸ）",
+  "リザードン（メガリザードンＹ）",
+]);
 
 if (failed > 0) {
   console.error(`\n${failed} test(s) failed`);

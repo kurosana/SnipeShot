@@ -54,6 +54,7 @@ FORM_TOKEN_JA = {
 
 PIKACHU_COSPLAY_PIDS = frozenset({10080, 10081, 10082, 10083, 10084, 10085})
 PIKACHU_COSPLAY_LINE = 10085
+PIKACHU_SPECIES_ID = 25
 
 # 特性違いのみの重複フォルム（ゲーム上は1エントリに統合）
 EXCLUDED_DUPLICATE_PIDS = frozenset({10116, 10119, 10118})
@@ -561,6 +562,19 @@ def main() -> None:
             moves_with_inheritance(pid, mode["vgs"]),
         )
 
+    def tas_signature(pid: int, mode: dict) -> tuple:
+        """種族値・タイプ・特性のみ（A区分フォルム統合用）。"""
+        return (
+            tuple(resolve_types(pid, mode["max_gen"])),
+            tuple(resolve_abilities(pid, mode["max_gen"])),
+            tuple(sorted(resolve_stats(pid, mode["max_gen"]).items())),
+        )
+
+    def merge_key(pid: int, sid: int, mode: dict) -> tuple:
+        if sid == PIKACHU_SPECIES_ID:
+            return ("full", entry_signature(pid, sid, mode))
+        return ("tas", tas_signature(pid, mode))
+
     def make_entry(pid: int, sid: int, mode: dict, *, suppress_suffix: bool = False) -> dict:
         return {
             "i": pid,
@@ -586,7 +600,7 @@ def main() -> None:
         for pid in candidates:
             if mode["vgs"] is not None and not moves_for_vgs(pid, mode["vgs"]):
                 continue
-            sig = entry_signature(pid, sid, mode)
+            sig = merge_key(pid, sid, mode)
             if sig not in by_sig:
                 by_sig[sig] = pid
             elif pid == default_pid:
