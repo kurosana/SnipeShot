@@ -731,7 +731,7 @@ tr.condition-excluded .btn-op.active {
 
 .select-efficacy {
   width: 100%;
-  min-width: 4.8rem;
+  min-width: 5.5rem;
   padding: 0.3rem;
   font-size: 0.72rem;
   border: 1px solid var(--border);
@@ -789,10 +789,9 @@ tr.condition-excluded .btn-op.active {
 }
 
 .result-zone-inner {
-  position: relative;
   display: flex;
-  align-items: flex-start;
-  justify-content: center;
+  flex-direction: column;
+  align-items: stretch;
   width: 100%;
 }
 
@@ -987,11 +986,9 @@ tr.condition-excluded .btn-op.active {
 }
 
 .btn-share-x {
-  position: absolute;
-  top: 0;
-  right: 0;
-  z-index: 2;
-  margin: 0;
+  align-self: flex-end;
+  flex-shrink: 0;
+  margin: 0 0 0.35rem;
   padding: 0.37rem 0.85rem;
   font-size: 0.6rem;
   font-weight: bold;
@@ -1018,6 +1015,7 @@ tr.condition-excluded .btn-op.active {
   font-weight: bold;
   text-align: center;
   line-height: 1.4;
+  word-break: break-word;
 }
 
 .answer-line .form-suffix {
@@ -1331,7 +1329,7 @@ tr.condition-excluded .btn-op.active {
   }
 
   .select-efficacy {
-    flex: 0 0 4.8rem;
+    flex: 0 0 5.5rem;
     width: auto;
   }
 

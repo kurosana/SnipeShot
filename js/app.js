@@ -929,8 +929,9 @@
     }
     if (cond.kind === "efficacy") {
       const eff = (CONFIG.efficacyLabels && CONFIG.efficacyLabels[cond.effKey]) || cond.effKey;
+      const effForShare = eff.replace(/のみ$/, "");
       const mark = cond.op === "is" ? "⭕" : "❌";
-      return `${cond.typeName}${eff}${mark}`;
+      return `${cond.typeName}${effForShare}${mark}`;
     }
     return "";
   }
