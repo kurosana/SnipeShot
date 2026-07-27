@@ -56,6 +56,10 @@ PIKACHU_COSPLAY_PIDS = frozenset({10080, 10081, 10082, 10083, 10084, 10085})
 PIKACHU_COSPLAY_LINE = 10085
 PIKACHU_SPECIES_ID = 25
 
+# 全ポケモン全わざで登場世代カットを適用する下限（Gen8 以降の初登場のみ）
+# Gen7 以前は赤緑→金銀など世代間引き継ぎを許容し、従来どおり全世代 OR 継承
+INTRO_GEN_CUT_FROM = 8
+
 # 特性違いのみの重複フォルム（ゲーム上は1エントリに統合）
 EXCLUDED_DUPLICATE_PIDS = frozenset({10116, 10119, 10118})
 
@@ -265,12 +269,18 @@ def main() -> None:
     pokemon_rows = read_csv("pokemon.csv")
     evolution_rows = read_csv("pokemon_evolution.csv")
 
+    species_generation: dict[int, int] = {}
     evolves_from: dict[int, int] = {}
     for row in species_rows:
         sid = to_int(row["id"])
+        species_generation[sid] = to_int(row["generation_id"])
         parent = row.get("evolves_from_species_id", "").strip()
         if parent:
             evolves_from[sid] = to_int(parent)
+
+    vg_to_generation: dict[int, int] = {}
+    for row in read_csv("version_groups.csv"):
+        vg_to_generation[to_int(row["id"])] = to_int(row["generation_id"])
 
     default_pokemon: dict[int, int] = {}
     pokemon_species: dict[int, int] = {}
@@ -291,6 +301,7 @@ def main() -> None:
     form_is_default: dict[int, bool] = {}
     form_is_mega: dict[int, bool] = {}
     form_is_battle_only: dict[int, bool] = {}
+    form_introduced_vg: dict[int, int] = {}
     totem_pokemon: set[int] = set()
     excluded_pokemon: set[int] = set()
     excluded_pokemon |= EXCLUDED_DUPLICATE_PIDS
@@ -308,8 +319,12 @@ def main() -> None:
         pokemon_form_identifier[fid] = form_ident
         if is_def:
             form_is_default[pid] = True
-        form_is_mega[pid] = to_int(row.get("is_mega", "0")) == 1
+        if to_int(row.get("is_mega", "0")) == 1:
+            form_is_mega[pid] = True
         form_is_battle_only[pid] = to_int(row.get("is_battle_only", "0")) == 1
+        intro_vg = row.get("introduced_in_version_group_id", "").strip()
+        if intro_vg:
+            form_introduced_vg[fid] = to_int(intro_vg)
         if is_totem_form(
             (row.get("identifier") or "").strip(),
             form_ident,
@@ -489,15 +504,44 @@ def main() -> None:
         stats["tot"] = sum(stats[k] for k in ("hp", "atk", "def", "spa", "spd", "spe"))
         return stats
 
-    def moves_for_vgs(pid: int, vgs: list[int] | None) -> tuple[int, ...]:
+    def intro_gen(pid: int) -> int:
+        fid = pokemon_to_form.get(pid)
+        if fid is not None and fid in form_introduced_vg:
+            vg = form_introduced_vg[fid]
+            if vg in vg_to_generation:
+                return vg_to_generation[vg]
+        sid = pokemon_species[pid]
+        return species_generation.get(sid, 1)
+
+    def inheritance_min_gen(pid: int, vgs: list[int] | None) -> int | None:
+        if vgs is not None:
+            return None
+        gen = intro_gen(pid)
+        if gen >= INTRO_GEN_CUT_FROM:
+            return gen
+        return None
+
+    def moves_for_vgs(
+        pid: int,
+        vgs: list[int] | None,
+        *,
+        min_gen: int | None = None,
+    ) -> tuple[int, ...]:
         if vgs is None:
+            if min_gen is not None:
+                merged: set[int] = set()
+                for vg, gen in vg_to_generation.items():
+                    if gen >= min_gen:
+                        merged |= moves_by_vg.get(vg, {}).get(pid, set())
+                return tuple(sorted(merged))
             return tuple(sorted(all_moves_by_pokemon.get(pid, set())))
-        merged: set[int] = set()
+        merged = set()
         for vg in vgs:
             merged |= moves_by_vg.get(vg, {}).get(pid, set())
         return tuple(sorted(merged))
 
     def moves_with_inheritance(pid: int, vgs: list[int] | None) -> tuple[int, ...]:
+        min_gen = inheritance_min_gen(pid, vgs)
         merged = set(moves_for_vgs(pid, vgs))
         node = pid_to_node[pid]
         seen: set[int] = {node}
@@ -507,8 +551,13 @@ def main() -> None:
             if ancestor in seen:
                 continue
             seen.add(ancestor)
-            merged |= set(moves_for_vgs(ancestor, vgs))
+            merged |= set(moves_for_vgs(ancestor, vgs, min_gen=min_gen))
             stack.extend(parents.get(ancestor, []))
+        if form_is_mega.get(pid):
+            sid = pokemon_species.get(pid)
+            base_pid = default_pokemon.get(sid) if sid is not None else None
+            if base_pid is not None and base_pid != pid:
+                merged |= set(moves_for_vgs(base_pid, vgs, min_gen=min_gen))
         return tuple(sorted(merged))
 
     def resolve_display_name(pid: int, sid: int, *, suppress_suffix: bool = False) -> str:
