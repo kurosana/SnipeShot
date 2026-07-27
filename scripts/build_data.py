@@ -679,8 +679,17 @@ def main() -> None:
         if mid in learnable_move_ids
     ]
 
+    type_efficacy: dict[str, dict[str, float]] = {}
+    for row in read_csv("type_efficacy.csv"):
+        atk = str(to_int(row["damage_type_id"]))
+        defense = str(to_int(row["target_type_id"]))
+        factor = to_int(row["damage_factor"]) / 100.0
+        type_efficacy.setdefault(atk, {})[defense] = factor
+
     with (OUT_DIR / "types.json").open("w", encoding="utf-8") as f:
         json.dump(types_json, f, ensure_ascii=False, separators=(",", ":"))
+    with (OUT_DIR / "type_efficacy.json").open("w", encoding="utf-8") as f:
+        json.dump(type_efficacy, f, ensure_ascii=False, separators=(",", ":"))
     with (OUT_DIR / "abilities.json").open("w", encoding="utf-8") as f:
         json.dump(abilities_json, f, ensure_ascii=False, separators=(",", ":"))
     with (OUT_DIR / "moves.json").open("w", encoding="utf-8") as f:

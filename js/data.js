@@ -4,6 +4,7 @@
 const DataStore = {
   index: null,
   types: [],
+  typeEfficacy: {},
   abilities: [],
   moves: [],
   eggGroups: [],
@@ -21,15 +22,17 @@ const DataStore = {
   async init() {
     const base = CONFIG.dataFolder;
     const q = this.cacheQuery();
-    const [index, types, abilities, moves, eggGroups] = await Promise.all([
+    const [index, types, typeEfficacy, abilities, moves, eggGroups] = await Promise.all([
       fetch(`${base}/index.json${q}`).then((r) => r.json()),
       fetch(`${base}/types.json${q}`).then((r) => r.json()),
+      fetch(`${base}/type_efficacy.json${q}`).then((r) => r.json()),
       fetch(`${base}/abilities.json${q}`).then((r) => r.json()),
       fetch(`${base}/moves.json${q}`).then((r) => r.json()),
       fetch(`${base}/egg_groups.json${q}`).then((r) => r.json()),
     ]);
     this.index = index;
     this.types = types;
+    this.typeEfficacy = typeEfficacy;
     this.abilities = abilities;
     this.moves = moves;
     this.eggGroups = eggGroups;

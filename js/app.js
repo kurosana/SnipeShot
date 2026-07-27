@@ -123,6 +123,7 @@
       eggName: "",
       statKey: "",
       statValue: "",
+      effKey: "",
       op: "",
       excluded: false,
     };
@@ -248,6 +249,7 @@
         eggId: c.eggId,
         statKey: c.statKey,
         statValue: c.statValue,
+        effKey: c.effKey,
       }))
     );
   }
@@ -418,6 +420,28 @@
         <input type="number" class="input-stat" min="0" max="999" inputmode="numeric" placeholder="数値" value="${escapeHtml(cond.statValue)}">
       </div>`;
     }
+    if (cond.kind === "efficacy") {
+      let typeBtn;
+      if (cond.typeId == null || cond.typeId === "single") {
+        typeBtn = '<button type="button" class="btn-pick btn-pick-type">タイプを選ぶ</button>';
+      } else {
+        const t = DataStore.typeById.get(cond.typeId);
+        const icon = t ? `${CONFIG.imgFolder}/${t.icon}.png` : "";
+        typeBtn = `<button type="button" class="btn-pick btn-pick-type picked">
+          ${icon ? `<img src="${icon}" alt="" class="type-icon-sm">` : ""}
+          <span>${escapeHtml(cond.typeName)}</span>
+        </button>`;
+      }
+      const opts =
+        `<option value="">選択</option>` +
+        Object.entries(CONFIG.efficacyLabels || {})
+          .map(([k, label]) => `<option value="${k}"${cond.effKey === k ? " selected" : ""}>${label}</option>`)
+          .join("");
+      return `<div class="stat-inputs">
+        ${typeBtn}
+        <select class="select-efficacy">${opts}</select>
+      </div>`;
+    }
     return "";
   }
 
@@ -452,6 +476,12 @@
       return `<div class="op-toggle">
         <button type="button" class="btn-op${cond.op === "gte" ? " active" : ""}" data-op="gte">以上</button>
         <button type="button" class="btn-op${cond.op === "lte" ? " active" : ""}" data-op="lte">以下</button>
+      </div>`;
+    }
+    if (cond.kind === "efficacy") {
+      return `<div class="op-toggle">
+        <button type="button" class="btn-op${cond.op === "is" ? " active" : ""}" data-op="is">である</button>
+        <button type="button" class="btn-op${cond.op === "not" ? " active" : ""}" data-op="not">でない</button>
       </div>`;
     }
     return "";
@@ -503,6 +533,7 @@
         cond.eggName = "";
         cond.statKey = "";
         cond.statValue = "";
+        cond.effKey = "";
         cond.op = "";
         renderConditions();
         refreshResults();
@@ -510,7 +541,7 @@
 
       tr.querySelector(".btn-pick-type")?.addEventListener("click", () => {
         editingRowId = cond.id;
-        openTypePicker();
+        openTypePicker({ forEfficacy: cond.kind === "efficacy" });
       });
       tr.querySelector(".btn-pick-ability")?.addEventListener("click", () => {
         editingRowId = cond.id;
@@ -531,6 +562,10 @@
       });
       tr.querySelector(".input-stat")?.addEventListener("input", (e) => {
         cond.statValue = e.target.value;
+        refreshResults();
+      });
+      tr.querySelector(".select-efficacy")?.addEventListener("change", (e) => {
+        cond.effKey = e.target.value;
         refreshResults();
       });
 
@@ -576,7 +611,8 @@
     return `${escapeHtml(m[1])}<span class="form-suffix">（${escapeHtml(m[2])}）</span>`;
   }
 
-  function openTypePicker() {
+  function openTypePicker(opts = {}) {
+    const forEfficacy = !!opts.forEfficacy;
     const list = $("#type-list");
     const typeButtons = DataStore.types
       .map(
@@ -588,10 +624,12 @@
       .join("");
     list.innerHTML =
       typeButtons +
-      `<button type="button" class="type-btn" data-id="single">
+      (forEfficacy
+        ? ""
+        : `<button type="button" class="type-btn" data-id="single">
         <img src="${CONFIG.imgFolder}/only.png" alt="">
         <span>単タイプ</span>
-      </button>`;
+      </button>`);
     list.querySelectorAll(".type-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         const cond = state.conditions.find((c) => c.id === editingRowId);
@@ -605,7 +643,7 @@
           const t = DataStore.typeById.get(tid);
           cond.typeId = tid;
           cond.typeName = t?.name ?? "";
-          cond.op = "";
+          if (cond.kind !== "efficacy") cond.op = "";
         }
         closeTypePicker();
         renderConditions();
@@ -739,32 +777,36 @@
       state.modeKey === "all"
         ? [
             ...Array(3).fill("move"),
-            ...Array(2).fill("ability"),
-            ...Array(1).fill("type"),
+            ...Array(2).fill("type"),
+            ...Array(3).fill("efficacy"),
             ...Array(1).fill("egg"),
           ]
         : [
             ...Array(3).fill("move"),
-            ...Array(2).fill("ability"),
-            ...Array(1).fill("type"),
+            ...Array(2).fill("type"),
+            ...Array(3).fill("efficacy"),
           ];
+    const kind = kindPool[Math.floor(Math.random() * kindPool.length)];
+
     for (let attempt = 0; attempt < 500; attempt++) {
       const cond = newCondition();
-      cond.kind = kindPool[Math.floor(Math.random() * kindPool.length)];
+      cond.kind = kind;
       if (cond.kind === "type") {
         const t = DataStore.types[Math.floor(Math.random() * DataStore.types.length)];
         cond.typeId = t.id;
         cond.typeName = t.name;
         cond.op = "has";
-      } else if (cond.kind === "ability") {
-        const a = DataStore.abilities[Math.floor(Math.random() * DataStore.abilities.length)];
-        cond.abilityId = a.id;
-        cond.abilityName = a.name;
-        cond.op = "has";
       } else if (cond.kind === "egg") {
         const g = DataStore.eggGroups[Math.floor(Math.random() * DataStore.eggGroups.length)];
         cond.eggId = g.id;
         cond.eggName = g.name;
+        cond.op = "is";
+      } else if (cond.kind === "efficacy") {
+        const t = DataStore.types[Math.floor(Math.random() * DataStore.types.length)];
+        cond.typeId = t.id;
+        cond.typeName = t.name;
+        const effKeys = Object.keys(CONFIG.efficacyLabels || {});
+        cond.effKey = effKeys[Math.floor(Math.random() * effKeys.length)];
         cond.op = "is";
       } else {
         const m = DataStore.moves[Math.floor(Math.random() * DataStore.moves.length)];
@@ -884,6 +926,11 @@
       const label = CONFIG.statLabels[cond.statKey] || cond.statKey;
       const mark = cond.op === "gte" ? "↑" : "↓";
       return `${label}${cond.statValue} ${mark}`;
+    }
+    if (cond.kind === "efficacy") {
+      const eff = (CONFIG.efficacyLabels && CONFIG.efficacyLabels[cond.effKey]) || cond.effKey;
+      const mark = cond.op === "is" ? "⭕" : "❌";
+      return `${cond.typeName}${eff}${mark}`;
     }
     return "";
   }

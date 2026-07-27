@@ -8,6 +8,40 @@ const FilterEngine = {
     return e != null ? [e] : [];
   },
 
+  /** 攻撃タイプ atkId が防御タイプ配列 defTypes に与える倍率（特性非考慮） */
+  typeMultiplier(atkId, defTypes, chart) {
+    const row = chart?.[String(atkId)];
+    if (!row) return 1;
+    let mult = 1;
+    for (const defId of defTypes) {
+      const f = row[String(defId)];
+      mult *= f == null ? 1 : f;
+    }
+    return mult;
+  },
+
+  /** 相性カテゴリに倍率が見合うか */
+  matchesEfficacyCategory(mult, effKey) {
+    switch (effKey) {
+      case "super":
+        return mult >= 2;
+      case "resist":
+        return mult <= 0.5;
+      case "x4":
+        return mult === 4;
+      case "x2":
+        return mult === 2;
+      case "x1":
+        return mult === 1;
+      case "x05":
+        return mult === 0.5;
+      case "x025":
+        return mult <= 0.25;
+      default:
+        return false;
+    }
+  },
+
   applyAll(pokemon, conditions) {
     let result = pokemon;
     for (const cond of conditions) {
@@ -21,6 +55,13 @@ const FilterEngine = {
   isComplete(cond) {
     if (!cond.kind || !cond.op) return false;
     if (cond.kind === "type") return cond.typeId != null;
+    if (cond.kind === "efficacy") {
+      return (
+        typeof cond.typeId === "number" &&
+        !!cond.effKey &&
+        ["super", "resist", "x4", "x2", "x1", "x05", "x025"].includes(cond.effKey)
+      );
+    }
     if (cond.kind === "ability") return cond.abilityId != null;
     if (cond.kind === "move") return cond.moveId != null;
     if (cond.kind === "egg") return cond.eggId != null;
@@ -43,6 +84,15 @@ const FilterEngine = {
           const has = p.t.includes(cond.typeId);
           return cond.op === "has" ? has : !has;
         });
+      case "efficacy": {
+        const chart =
+          typeof DataStore !== "undefined" ? DataStore.typeEfficacy : cond._chart || {};
+        return pokemon.filter((p) => {
+          const mult = this.typeMultiplier(cond.typeId, p.t, chart);
+          const match = this.matchesEfficacyCategory(mult, cond.effKey);
+          return cond.op === "is" ? match : !match;
+        });
+      }
       case "ability":
         return pokemon.filter((p) => {
           const has = p.a.includes(cond.abilityId);
