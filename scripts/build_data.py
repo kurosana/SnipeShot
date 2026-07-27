@@ -26,7 +26,7 @@ from collections import defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-CSV_DIR = ROOT.parent / "pokeapi-master" / "pokeapi-master" / "data" / "v2" / "csv"
+CSV_DIR = ROOT.parent / "pokeapi-master" / "pokeapi" / "data" / "v2" / "csv"
 OUT_DIR = ROOT / "data"
 JA_LANG = 11
 
