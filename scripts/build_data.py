@@ -557,7 +557,11 @@ def main() -> None:
             sid = pokemon_species.get(pid)
             base_pid = default_pokemon.get(sid) if sid is not None else None
             if base_pid is not None and base_pid != pid:
-                merged |= set(moves_for_vgs(base_pid, vgs, min_gen=min_gen))
+                base_moves = moves_for_vgs(base_pid, vgs, min_gen=min_gen)
+                # PokeAPI に Gen9 以降の習得表が無いベース（ゼラオラ等）は全世代 OR で補完
+                if not base_moves:
+                    base_moves = moves_for_vgs(base_pid, vgs, min_gen=None)
+                merged |= set(base_moves)
         return tuple(sorted(merged))
 
     def resolve_display_name(pid: int, sid: int, *, suppress_suffix: bool = False) -> str:
