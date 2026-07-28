@@ -108,12 +108,77 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 100dvh;
+  position: relative;
+  min-height: calc(100dvh - 4.5rem);
   padding:
     max(3.5rem, calc(env(safe-area-inset-top) + 2.5rem))
     1.25rem
-    2.5rem;
+    0.75rem;
   text-align: center;
+}
+
+.start-hero::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3rem;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, rgba(240, 249, 255, 0.92));
+}
+
+.start-rules-invite {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.65rem;
+  margin-top: 1.75rem;
+  padding: 0 0 0.25rem;
+  text-align: center;
+}
+
+.start-rules-label {
+  margin: 0;
+  font-family: "Zen Maru Gothic", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+  font-size: clamp(1.25rem, 4.8vw, 1.55rem);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--text-muted);
+}
+
+.start-scroll-cue {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 999px;
+  color: var(--text-muted);
+  text-decoration: none;
+  animation: start-cue-bounce 1.6s ease-in-out infinite;
+  touch-action: manipulation;
+}
+
+.start-scroll-chevron {
+  display: block;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg) translateY(-2px);
+}
+
+@keyframes start-cue-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.75;
+  }
+  50% {
+    transform: translateY(6px);
+    opacity: 1;
+  }
 }
 
 .app-title {
@@ -164,8 +229,9 @@ body {
 
 .start-rules {
   width: min(92vw, 520px);
-  margin: 0 auto;
-  padding: 0.5rem 0 max(2.5rem, env(safe-area-inset-bottom));
+  margin: -0.5rem auto 0;
+  padding: 0.75rem 0 max(2.5rem, env(safe-area-inset-bottom));
+  scroll-margin-top: 1rem;
   text-align: left;
 }
 
@@ -305,6 +371,7 @@ body {
   .app-title,
   .start-hero-icon,
   .start-hero .btn-start-large,
+  .start-scroll-cue,
   .rule-phase {
     animation: none;
   }
