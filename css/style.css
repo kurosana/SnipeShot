@@ -138,6 +138,14 @@ body {
   text-align: center;
 }
 
+.start-rules-players {
+  margin: 0;
+  font-size: clamp(0.88rem, 3.2vw, 1rem);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
 .start-rules-label {
   margin: 0;
   font-family: "Zen Maru Gothic", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
@@ -285,6 +293,24 @@ body {
   color: var(--text);
 }
 
+.rule-goal-em {
+  font-size: 1.08em;
+  font-weight: 900;
+  color: var(--btn-pressed);
+  letter-spacing: 0.02em;
+}
+
+.rule-lineage-note {
+  margin: 0 0 0.85rem;
+  padding: 0.75rem 0.85rem;
+  font-size: clamp(0.9rem, 3.2vw, 1rem);
+  line-height: 1.65;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.72);
+  border-left: 3px solid var(--btn-primary);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
 .rule-phase-sub {
   margin: 0.9rem 0 0.45rem;
   font-size: 0.92rem;
@@ -365,6 +391,23 @@ body {
   line-height: 1.6;
   color: var(--text-muted);
   text-align: left;
+}
+
+.start-contact {
+  margin: 1rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+  text-align: left;
+}
+
+.start-contact a {
+  color: var(--btn-pressed);
+  text-decoration: none;
+}
+
+.start-contact a:hover {
+  text-decoration: underline;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -26,7 +26,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=2.5.3">
+  <link rel="stylesheet" href="css/style.css?v=2.5.5">
 </head>
 <body>
   <div id="app">
@@ -42,6 +42,7 @@
           <img class="start-hero-icon" src="Img/icon.jpg" width="180" height="180" alt="ねらいうちゲーム">
           <button type="button" class="btn-primary btn-start-large" id="btn-to-setup">スタート</button>
           <div class="start-rules-invite">
+            <p class="start-rules-players">推奨人数1～5人</p>
             <h2 class="start-rules-label">ルール</h2>
             <a class="start-scroll-cue" href="#start-rules" aria-label="ルールへスクロール">
               <span class="start-scroll-chevron" aria-hidden="true"></span>
@@ -59,6 +60,8 @@
             <figure class="rule-phase-figure">
               <img src="Img/IMG_9781.png" alt="プレイヤーが順番に条件を出し、該当匹数・系統数が減っていく様子" loading="lazy">
             </figure>
+            <p class="rule-phase-lead">これを繰り返して、<strong class="rule-goal-em">ぴったり2系統</strong>だけに絞り込むことを目指します。</p>
+            <p class="rule-lineage-note"><strong>系統</strong>：進化・フォルム系統を1種類の系統にまとめた数です。<br>例）ケロマツ・ゲコガシラ・ゲッコウガ・サトシゲッコウガ・メガゲッコウガは5匹1系統としてカウント</p>
             <p class="rule-phase-sub">条件一覧は以下の通り</p>
             <ul class="rule-list">
               <li>タイプ（持つ / 持たない）</li>
@@ -92,14 +95,16 @@
             <figure class="rule-phase-figure">
               <img src="Img/IMG_9782.png" alt="2系統になった瞬間にねらいうちモードが始まりタイマーが動く様子" loading="lazy">
             </figure>
-            <p class="rule-phase-lead">絞り込んだ2系統を当てられなければ、最後に絞り込んだ人の勝ちです！</p>
-            <p class="rule-phase-lead">他の全員は制限時間以内に話し合って、2系統を当てられたら他全員の勝利になります。</p>
+            <p class="rule-phase-lead">最後に絞り込んだ人が出題者となり、それ以外の人は絞り込まれた2系統のポケモンを話し合って当てます。</p>
             <figure class="rule-phase-figure">
               <img src="Img/IMG_9783.png" alt="2系統を当てた場合は回答者の勝利、当てられなかった場合は出題者の勝利" loading="lazy">
             </figure>
+            <p class="rule-phase-lead">絞り込んだ2系統を当てられなければ、最後に絞り込んだ人の勝ちです！</p>
+            <p class="rule-phase-lead">他の全員は制限時間以内に話し合って、2系統を当てられたら他全員の勝利になります。</p>
           </article>
 
           <p class="rules-help-hint">詳しくはゲーム画面のヘルプ・詳細裁定ボタンで！</p>
+          <p class="start-contact">不具合・ご意見は クロサナ(X:<a href="https://x.com/kurosana309637" target="_blank" rel="noopener noreferrer">@kurosana309637</a>) まで</p>
         </div>
       </div>
     </section>
