@@ -23,21 +23,78 @@
   <meta name="twitter:title" content="ねらいうちゲーム">
   <meta name="twitter:description" content="ポケモンを条件で絞り込むねらいうちゲーム">
   <meta name="twitter:image" content="https://kurosana.github.io/SnipeShot/Img/og-image.png">
-  <link rel="stylesheet" href="css/style.css?v=1.6.1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=2.5.2">
 </head>
 <body>
   <div id="app">
     <!-- スタート画面 -->
     <section id="screen-start" class="screen active">
-      <img class="start-bg-icon" src="Img/icon.jpg" alt="" aria-hidden="true">
       <div class="app-version-wrap" id="app-version-wrap">
         <span class="app-version" id="app-version"></span>
         <span class="app-version app-release-notes" id="app-release-notes" hidden></span>
       </div>
-      <div class="start-inner">
-        <h1 class="app-title" id="app-title">ねらいうちゲーム</h1>
-        <div class="rules-box" id="rules-box"></div>
-        <button type="button" class="btn-primary btn-start-large" id="btn-to-setup">スタート</button>
+      <div class="start-scroll">
+        <div class="start-hero">
+          <h1 class="app-title" id="app-title">ねらいうちゲーム</h1>
+          <img class="start-hero-icon" src="Img/icon.jpg" width="180" height="180" alt="ねらいうちゲーム">
+          <button type="button" class="btn-primary btn-start-large" id="btn-to-setup">スタート</button>
+        </div>
+
+        <div class="start-rules" id="start-rules">
+          <article class="rule-phase rule-phase--filter">
+            <header class="rule-phase-head">
+              <span class="rule-phase-num" aria-hidden="true">01</span>
+              <h2 class="rule-phase-title">絞り込みフェーズ</h2>
+            </header>
+            <p class="rule-phase-lead">一人ずつ順番に、ポケモンを絞り込む条件を指定します。</p>
+            <figure class="rule-phase-figure">
+              <img src="Img/IMG_9781.png" alt="プレイヤーが順番に条件を出し、該当匹数・系統数が減っていく様子" loading="lazy">
+            </figure>
+            <p class="rule-phase-sub">条件一覧は以下の通り</p>
+            <ul class="rule-list">
+              <li>タイプ（持つ / 持たない）</li>
+              <li>タイプ相性（抜群 / 今一つなど）（特性非考慮）</li>
+              <li>とくせい（持つ / 持たない）</li>
+              <li>わざ（覚える / 覚えない）</li>
+              <li>種族値（以上 / 以下）</li>
+              <li>タマゴグループ（である / でない）</li>
+            </ul>
+            <div class="rule-dobon">
+              <p class="rule-dobon-title">ただし、以下の条件を言ってしまったらドボンで敗退です。</p>
+              <ul class="rule-list rule-list--warn">
+                <li>前の条件から1匹も減らない</li>
+                <li>1系統か該当なしになってしまう</li>
+              </ul>
+            </div>
+          </article>
+
+          <div class="rule-phase-connector" aria-hidden="true">
+            <span class="rule-phase-connector-line"></span>
+            <span class="rule-phase-connector-label">つづいて</span>
+            <span class="rule-phase-connector-line"></span>
+          </div>
+
+          <article class="rule-phase rule-phase--snipe">
+            <header class="rule-phase-head">
+              <span class="rule-phase-num" aria-hidden="true">02</span>
+              <h2 class="rule-phase-title">ねらいうちフェーズ</h2>
+            </header>
+            <p class="rule-phase-lead">条件を全て満たすポケモンが2系統に絞り込まれたらねらいうちモード！</p>
+            <figure class="rule-phase-figure">
+              <img src="Img/IMG_9782.png" alt="2系統になった瞬間にねらいうちモードが始まりタイマーが動く様子" loading="lazy">
+            </figure>
+            <p class="rule-phase-lead">絞り込んだ2系統を当てられなければ、最後に絞り込んだ人の勝ちです！</p>
+            <p class="rule-phase-lead">他の全員は制限時間以内に話し合って、2系統を当てられたら他全員の勝利になります。</p>
+            <figure class="rule-phase-figure">
+              <img src="Img/IMG_9783.png" alt="2系統を当てた場合は回答者の勝利、当てられなかった場合は出題者の勝利" loading="lazy">
+            </figure>
+          </article>
+
+          <p class="rules-help-hint">詳しくはゲーム画面のヘルプ・詳細裁定ボタンで！</p>
+        </div>
       </div>
     </section>
 

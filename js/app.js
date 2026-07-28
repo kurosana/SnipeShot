@@ -986,21 +986,12 @@
     }
   }
 
-  function getRulesBasicHtml() {
-    return CONFIG.rulesBasicHtml || CONFIG.rulesHtml || "";
-  }
-
   function getRulesDetailHtml() {
     return CONFIG.rulesDetailHtml || "";
   }
 
   function getRulesRulingHtml() {
     return CONFIG.rulesRulingHtml || "";
-  }
-
-  function buildStartRulesHtml() {
-    const basic = getRulesBasicHtml();
-    return `${basic}<p class="rules-help-hint">詳しくはゲーム画面のヘルプ・詳細裁定ボタンで！</p>`;
   }
 
   function openRulesOverlay(kind) {
@@ -1058,8 +1049,6 @@
       if (cfg.rulesDetailHtml) CONFIG.rulesDetailHtml = cfg.rulesDetailHtml;
       if (cfg.rulesRulingHtml) CONFIG.rulesRulingHtml = cfg.rulesRulingHtml;
       if (cfg.rulesHtml) CONFIG.rulesHtml = cfg.rulesHtml;
-      const box = $("#rules-box");
-      if (box) box.innerHTML = buildStartRulesHtml();
     }
     if (cfg.version) {
       CONFIG.version = cfg.version;
@@ -1104,10 +1093,6 @@
         return;
       }
       await loadAppConfig();
-      const rulesBox = $("#rules-box");
-      if (rulesBox && !rulesBox.innerHTML.trim()) {
-        rulesBox.innerHTML = buildStartRulesHtml();
-      }
       await DataStore.init();
       populateGenerationSelect();
       updateRandomFirstUI();

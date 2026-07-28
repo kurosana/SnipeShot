@@ -42,12 +42,14 @@ body {
 #app {
   height: 100%;
   max-height: 100dvh;
+  min-height: 0;
 }
 
 .screen {
   display: none;
   height: 100%;
   max-height: 100dvh;
+  min-height: 0;
   flex-direction: column;
   overflow: hidden;
 }
@@ -58,25 +60,19 @@ body {
 
 /* ========== スタート画面 ========== */
 #screen-start {
+  display: none;
+  overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   position: relative;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(125, 211, 252, 0.55), transparent 70%),
+    radial-gradient(ellipse 60% 40% at 100% 30%, rgba(186, 230, 253, 0.45), transparent 55%),
+    linear-gradient(180deg, #e0f2fe 0%, var(--bg) 38%, #f8fbff 100%);
 }
 
-.start-bg-icon {
-  position: absolute;
-  inset: 0;
-  width: min(55vw, 280px);
-  height: min(55vw, 280px);
-  margin: auto;
-  object-fit: contain;
-  opacity: 0.2;
-  pointer-events: none;
-  z-index: 0;
-}
-
-#screen-start::before {
-  content: none;
+#screen-start.active {
+  display: block;
 }
 
 .app-version-wrap {
@@ -90,7 +86,7 @@ body {
   max-width: calc(100% - 1.5rem);
   pointer-events: none;
   user-select: none;
-  z-index: 1;
+  z-index: 2;
 }
 
 .app-version-wrap .app-version {
@@ -103,51 +99,218 @@ body {
   font-size: 0.65rem;
 }
 
-.start-inner {
-  position: relative;
-  z-index: 1;
-  flex: 1;
+.start-scroll {
+  width: 100%;
+}
+
+.start-hero {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: max(1.5rem, env(safe-area-inset-top)) 1.25rem max(2rem, env(safe-area-inset-bottom));
-  min-height: 100%;
-}
-
-.app-title {
-  margin: 0 0 1.25rem;
-  font-size: clamp(1.5rem, 6vw, 2rem);
-  color: var(--text);
+  min-height: 100dvh;
+  padding:
+    max(3.5rem, calc(env(safe-area-inset-top) + 2.5rem))
+    1.25rem
+    2.5rem;
   text-align: center;
 }
 
-.rules-box {
-  width: min(92vw, 360px);
-  margin-bottom: 2rem;
-  padding: 1rem 1.25rem;
-  background: #fff;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  font-size: 0.85rem;
-  line-height: 1.6;
+.app-title {
+  margin: 0 0 1.1rem;
+  font-family: "Zen Maru Gothic", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+  font-size: clamp(2rem, 8vw, 2.75rem);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  text-align: center;
+  animation: start-rise 0.7s ease-out both;
+}
+
+.start-hero-icon {
+  width: min(42vw, 168px);
+  height: min(42vw, 168px);
+  margin: 0 0 1.5rem;
+  object-fit: contain;
+  border-radius: 28%;
+  box-shadow: 0 10px 28px rgba(2, 132, 199, 0.18);
+  animation: start-rise 0.7s ease-out 0.08s both, start-float 4.5s ease-in-out 0.9s infinite;
+}
+
+.start-hero .btn-start-large {
+  animation: start-rise 0.7s ease-out 0.16s both;
+}
+
+@keyframes start-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes start-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.start-rules {
+  width: min(92vw, 520px);
+  margin: 0 auto;
+  padding: 0.5rem 0 max(2.5rem, env(safe-area-inset-bottom));
+  text-align: left;
+}
+
+.rule-phase {
+  padding: 0.25rem 0 0.5rem;
+  animation: start-rise 0.75s ease-out both;
+}
+
+.rule-phase--filter {
+  animation-delay: 0.22s;
+}
+
+.rule-phase--snipe {
+  animation-delay: 0.32s;
+}
+
+.rule-phase-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.65rem;
+  margin-bottom: 0.85rem;
+}
+
+.rule-phase-num {
+  font-family: "Zen Maru Gothic", "Hiragino Sans", sans-serif;
+  font-size: clamp(1.6rem, 6vw, 2rem);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: var(--btn-primary);
+}
+
+.rule-phase--snipe .rule-phase-num {
+  color: var(--danger);
+}
+
+.rule-phase-title {
+  margin: 0;
+  font-family: "Zen Maru Gothic", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+  font-size: clamp(1.35rem, 5.2vw, 1.75rem);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--text);
+  line-height: 1.25;
+}
+
+.rule-phase-lead {
+  margin: 0 0 0.85rem;
+  font-size: clamp(0.98rem, 3.6vw, 1.12rem);
+  line-height: 1.75;
+  color: var(--text);
+}
+
+.rule-phase-sub {
+  margin: 0.9rem 0 0.45rem;
+  font-size: 0.92rem;
+  font-weight: 700;
   color: var(--text-muted);
 }
 
-.rules-box p {
-  margin: 0 0 0.5rem;
+.rule-phase-figure {
+  margin: 0.85rem 0 1.1rem;
+  padding: 0;
 }
 
-.rules-box ul {
-  margin: 0.5rem 0;
-  padding-left: 1.25rem;
+.rule-phase-figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: transparent;
+  mix-blend-mode: screen;
 }
 
-.rules-box li {
-  margin-bottom: 0.25rem;
+.rule-list {
+  margin: 0 0 1rem;
+  padding-left: 1.2rem;
+  font-size: clamp(0.92rem, 3.3vw, 1.02rem);
+  line-height: 1.7;
+  color: var(--text);
 }
 
+.rule-list li {
+  margin-bottom: 0.35rem;
+}
+
+.rule-list--warn {
+  margin-bottom: 0;
+}
+
+.rule-dobon {
+  margin: 1rem 0 0.25rem;
+  padding: 0.85rem 0 0.85rem 0.9rem;
+  border-left: 3px solid var(--danger);
+}
+
+.rule-dobon-title {
+  margin: 0 0 0.45rem;
+  font-size: clamp(0.92rem, 3.3vw, 1.02rem);
+  font-weight: 700;
+  line-height: 1.55;
+  color: var(--danger);
+}
+
+.rule-phase-connector {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1.4rem 0 1.6rem;
+  color: var(--text-muted);
+}
+
+.rule-phase-connector-line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border), transparent);
+}
+
+.rule-phase-connector-label {
+  flex: 0 0 auto;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
+
+.start-rules .rules-help-hint {
+  margin: 1.75rem 0 0;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+  text-align: left;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-title,
+  .start-hero-icon,
+  .start-hero .btn-start-large,
+  .rule-phase {
+    animation: none;
+  }
+}
+
+/* オーバーレイ内ルール（ヘルプ等） */
 .rules-box-overlay {
   margin: 0;
   width: auto;
@@ -156,18 +319,28 @@ body {
   border: none;
   border-radius: 0;
   box-shadow: none;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.rules-box-overlay p {
+  margin: 0 0 0.5rem;
+}
+
+.rules-box-overlay ul {
+  margin: 0.5rem 0;
+  padding-left: 1.25rem;
+}
+
+.rules-box-overlay li {
+  margin-bottom: 0.25rem;
 }
 
 .rules-box-overlay .rules-detail {
   margin-top: 1rem;
   padding-top: 0.75rem;
   border-top: 1px dashed var(--border);
-}
-
-.rules-box .rules-help-hint {
-  margin-top: 0.75rem;
-  font-size: 0.8rem;
-  color: var(--text-muted);
 }
 
 .btn-primary {
