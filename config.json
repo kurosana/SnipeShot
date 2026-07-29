@@ -1,5 +1,5 @@
 {
-  "version": "v3.0.0",
+  "version": "v3.0.1",
   "releaseNotes": "レギュレーション変更とタイプ相性の追加",
   "appTitle": "ねらいうちゲーム",
   "standardHelpHtml": "<ul><li>ポケモンは全種類</li><li>技は赤緑～チャンピオンズまでのポケットモンスターシリーズのうち、LEGENDS系を抜いたもの。</li><li>特性タイプ種族値タマゴグループは最新情報に準拠</li></ul>",
