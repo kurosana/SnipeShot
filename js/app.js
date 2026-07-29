@@ -1020,7 +1020,7 @@
       const trimmed = condText.slice(0, Math.max(0, budget - 1));
       condText = `${trimmed}……`;
     }
-    return `${ruleLine}${intro}\n${condText}\n${footer}\n${url}`.replace(/\n\n/g, "\n");
+    return `${intro}\n${ruleLine}${condText}\n${footer}\n${url}`.replace(/\n\n/g, "\n");
   }
 
   function openXShare() {
