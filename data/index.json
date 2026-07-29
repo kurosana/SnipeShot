@@ -1,88 +1,109 @@
 {
   "modes": [
     {
-      "key": "all",
-      "label": "全ポケモン全わざ",
-      "file": "mode_all.json",
-      "count": 1255
+      "key": "standard",
+      "label": "スタンダード",
+      "file": "mode_standard.json",
+      "count": 1255,
+      "max_gen": 9
     },
     {
       "key": "gen1",
       "label": "1世代",
       "file": "mode_gen1.json",
-      "count": 151
+      "count": 151,
+      "max_gen": 1
     },
     {
       "key": "gen2",
       "label": "2世代",
       "file": "mode_gen2.json",
-      "count": 251
+      "count": 251,
+      "max_gen": 2
     },
     {
       "key": "gen3",
       "label": "3世代",
       "file": "mode_gen3.json",
-      "count": 391
+      "count": 391,
+      "max_gen": 3
     },
     {
       "key": "gen4",
       "label": "4世代",
       "file": "mode_gen4.json",
-      "count": 504
+      "count": 504,
+      "max_gen": 4
     },
     {
       "key": "gen5",
       "label": "5世代",
       "file": "mode_gen5.json",
-      "count": 672
+      "count": 672,
+      "max_gen": 5
     },
     {
       "key": "gen6",
       "label": "6世代",
       "file": "mode_gen6.json",
-      "count": 810
+      "count": 810,
+      "max_gen": 6
     },
     {
       "key": "gen7",
       "label": "7世代",
       "file": "mode_gen7.json",
-      "count": 922
+      "count": 922,
+      "max_gen": 7
     },
     {
       "key": "pikabui",
       "label": "ピカブイ",
       "file": "mode_pikabui.json",
-      "count": 186
+      "count": 186,
+      "max_gen": 7
     },
     {
       "key": "gen8",
       "label": "8世代",
       "file": "mode_gen8.json",
-      "count": 733
+      "count": 733,
+      "max_gen": 8
     },
     {
       "key": "bdsp",
       "label": "BDSP",
       "file": "mode_bdsp.json",
-      "count": 491
+      "count": 491,
+      "max_gen": 8
     },
     {
       "key": "arceus",
       "label": "アルセウス",
       "file": "mode_arceus.json",
-      "count": 247
+      "count": 247,
+      "max_gen": 8
     },
     {
       "key": "gen9",
       "label": "9世代",
       "file": "mode_gen9.json",
-      "count": 828
+      "count": 828,
+      "max_gen": 9
     },
     {
       "key": "champions",
       "label": "チャンピオンズ",
       "file": "mode_champions.json",
-      "count": 315
+      "count": 315,
+      "max_gen": 9
+    },
+    {
+      "key": "all",
+      "label": "全作品（ZA除く）",
+      "file": "mode_all.json",
+      "count": 1255,
+      "max_gen": 9
     }
   ],
   "stats": [

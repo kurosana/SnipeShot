@@ -12,7 +12,7 @@
   };
 
   const state = {
-    modeKey: "all",
+    modeKey: "standard",
     modeLabel: "",
     timeSec: 120,
     conditions: [],
@@ -39,7 +39,7 @@
 
   function resetSetupSelection() {
     setupState.selectedMode = null;
-    $("#btn-mode-all").classList.remove("pressed");
+    $("#btn-mode-standard").classList.remove("pressed");
     $("#btn-mode-gen").classList.remove("pressed");
     $("#btn-start-setup").hidden = true;
     updateGenerationSelectState();
@@ -47,7 +47,7 @@
 
   function selectSetupMode(mode) {
     setupState.selectedMode = mode;
-    $("#btn-mode-all").classList.toggle("pressed", mode === "all");
+    $("#btn-mode-standard").classList.toggle("pressed", mode === "standard");
     $("#btn-mode-gen").classList.toggle("pressed", mode === "gen");
     $("#btn-start-setup").hidden = false;
     updateGenerationSelectState();
@@ -65,8 +65,9 @@
   }
 
   function getSelectedGameMode() {
-    if (setupState.selectedMode === "all") {
-      return { key: "all", label: "全ポケモン全わざ" };
+    if (setupState.selectedMode === "standard") {
+      const mode = DataStore.index.modes.find((m) => m.key === "standard");
+      return { key: "standard", label: mode?.label || "スタンダード" };
     }
     if (setupState.selectedMode === "gen") {
       const key = $("#select-generation").value;
@@ -74,6 +75,10 @@
       if (mode) return { key: mode.key, label: mode.label };
     }
     return null;
+  }
+
+  function isFullPokedexMode(modeKey = state.modeKey) {
+    return modeKey === "standard" || modeKey === "all";
   }
 
   let editingRowId = null;
@@ -183,7 +188,7 @@
   }
 
   function getConditionKindsForMode() {
-    if (state.modeKey === "all") return CONFIG.conditionKinds;
+    if (isFullPokedexMode()) return CONFIG.conditionKinds;
     return CONFIG.conditionKinds.filter((k) => k.value !== "egg");
   }
 
@@ -705,15 +710,71 @@
     const ov = $("#overlay-search");
     ov.classList.add("active");
     ov.setAttribute("aria-hidden", "false");
-    input.focus();
+    syncSearchOverlayViewport();
+    bindSearchViewportFix(true);
+    input.focus({ preventScroll: true });
   }
 
   function closeSearch() {
     const ov = $("#overlay-search");
     ov.classList.remove("active");
     ov.setAttribute("aria-hidden", "true");
+    bindSearchViewportFix(false);
+    clearSearchOverlayViewport();
     searchKind = null;
     editingRowId = null;
+  }
+
+  /** X アプリ内ブラウザ等でキーボード表示時に fixed オーバーレイの当たり判定がずれる対策 */
+  function syncSearchOverlayViewport() {
+    const ov = $("#overlay-search");
+    if (!ov || !ov.classList.contains("active")) return;
+    const vv = window.visualViewport;
+    if (!vv) {
+      clearSearchOverlayViewport();
+      return;
+    }
+    ov.style.left = "0";
+    ov.style.right = "0";
+    ov.style.bottom = "auto";
+    ov.style.top = `${vv.offsetTop}px`;
+    ov.style.height = `${vv.height}px`;
+    ov.style.transform = "";
+  }
+
+  function clearSearchOverlayViewport() {
+    const ov = $("#overlay-search");
+    if (!ov) return;
+    ov.style.top = "";
+    ov.style.left = "";
+    ov.style.right = "";
+    ov.style.bottom = "";
+    ov.style.height = "";
+    ov.style.transform = "";
+  }
+
+  let searchViewportBound = false;
+  function onSearchViewportChange() {
+    syncSearchOverlayViewport();
+  }
+
+  function bindSearchViewportFix(on) {
+    const vv = window.visualViewport;
+    if (on && !searchViewportBound) {
+      window.addEventListener("resize", onSearchViewportChange);
+      if (vv) {
+        vv.addEventListener("resize", onSearchViewportChange);
+        vv.addEventListener("scroll", onSearchViewportChange);
+      }
+      searchViewportBound = true;
+    } else if (!on && searchViewportBound) {
+      window.removeEventListener("resize", onSearchViewportChange);
+      if (vv) {
+        vv.removeEventListener("resize", onSearchViewportChange);
+        vv.removeEventListener("scroll", onSearchViewportChange);
+      }
+      searchViewportBound = false;
+    }
   }
 
   function normalizeJaSearch(text) {
@@ -754,10 +815,15 @@
       .join("");
 
     el.querySelectorAll(".search-result-item").forEach((btn) => {
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", (e) => {
+        // X アプリ内ブラウザ等: イベント target がずれても座標上の要素を優先
+        const elAt = document.elementFromPoint(e.clientX, e.clientY);
+        const hit = elAt && elAt.closest ? elAt.closest(".search-result-item") : null;
+        const target = hit || btn;
         const cond = state.conditions.find((c) => c.id === editingRowId);
         if (!cond) return;
-        const id = Number(btn.dataset.id);
+        const id = Number(target.dataset.id);
+        if (!Number.isFinite(id)) return;
         if (searchKind === "ability") {
           cond.abilityId = id;
           cond.abilityName = DataStore.abilityById.get(id)?.name ?? "";
@@ -774,7 +840,7 @@
 
   function drawRandomFirstCondition() {
     const kindPool =
-      state.modeKey === "all"
+      isFullPokedexMode()
         ? [
             ...Array(3).fill("move"),
             ...Array(2).fill("type"),
@@ -939,20 +1005,22 @@
   function buildShareText() {
     const url = CONFIG.shareUrl || "https://kurosana.github.io/SnipeShot/";
     const { lines } = FilterEngine.countResults(state.hits);
+    const ruleLine = isFullPokedexMode() ? "" : `${state.modeLabel}\n`;
     const intro = `以下を満たすポケモンは${lines}系統だけ！わかるかな？`;
     const footer = "↓ねらいうちゲームで遊ぼう！";
     const conditions = state.conditions
       .filter((c) => !c.excluded && FilterEngine.isComplete(c))
       .map(formatConditionForShare)
       .filter(Boolean);
-    const fixedLen = intro.length + 1 + footer.length + 1 + url.length + 1;
+    const fixedLen =
+      ruleLine.length + intro.length + 1 + footer.length + 1 + url.length + 1;
     const budget = TWEET_LIMIT - fixedLen - URL_TWEET_LEN + url.length;
     let condText = conditions.join("\n");
     if (condText.length > budget) {
       const trimmed = condText.slice(0, Math.max(0, budget - 1));
       condText = `${trimmed}……`;
     }
-    return `${intro}\n${condText}\n${footer}\n${url}`.replace(/\n\n/g, "\n");
+    return `${ruleLine}${intro}\n${condText}\n${footer}\n${url}`.replace(/\n\n/g, "\n");
   }
 
   function openXShare() {
@@ -997,12 +1065,25 @@
   function openRulesOverlay(kind) {
     const body = $("#rules-overlay-body");
     const title = $("#rules-overlay-title");
-    const html = kind === "ruling" ? getRulesRulingHtml() : getRulesDetailHtml();
+    let html;
+    let titleText;
+    if (kind === "ruling") {
+      html = getRulesRulingHtml();
+      titleText = "詳細裁定";
+    } else if (kind === "standard") {
+      html =
+        CONFIG.standardHelpHtml ||
+        "<ul><li>ポケモンは全種類</li><li>技は赤緑～チャンピオンズまでのポケットモンスターシリーズのうち、LEGENDS系を抜いたもの。</li><li>特性タイプ種族値タマゴグループは最新情報に準拠</li></ul>";
+      titleText = "スタンダード";
+    } else {
+      html = getRulesDetailHtml();
+      titleText = "ヘルプ";
+    }
     if (body) {
       body.innerHTML = html;
     }
     if (title) {
-      title.textContent = kind === "ruling" ? "詳細裁定" : "ヘルプ";
+      title.textContent = titleText;
     }
     const ov = $("#overlay-rules");
     ov.classList.add("active");
@@ -1050,6 +1131,7 @@
       if (cfg.rulesRulingHtml) CONFIG.rulesRulingHtml = cfg.rulesRulingHtml;
       if (cfg.rulesHtml) CONFIG.rulesHtml = cfg.rulesHtml;
     }
+    if (cfg.standardHelpHtml) CONFIG.standardHelpHtml = cfg.standardHelpHtml;
     if (cfg.version) {
       CONFIG.version = cfg.version;
       const verEl = $("#app-version");
@@ -1106,7 +1188,7 @@
 
   // --- events ---
   $("#btn-to-setup").addEventListener("click", () => {
-    selectSetupMode("all");
+    selectSetupMode("standard");
     showScreen("setup");
   });
   $("#btn-back-start").addEventListener("click", () => {
@@ -1114,8 +1196,13 @@
     showScreen("start");
   });
 
-  $("#btn-mode-all").addEventListener("click", () => {
-    selectSetupMode("all");
+  $("#btn-mode-standard").addEventListener("click", () => {
+    selectSetupMode("standard");
+  });
+
+  $("#btn-standard-help").addEventListener("click", (e) => {
+    e.stopPropagation();
+    openRulesOverlay("standard");
   });
 
   $("#btn-mode-gen").addEventListener("click", () => {

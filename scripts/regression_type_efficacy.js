@@ -15,7 +15,10 @@ const code = fs
 eval(code);
 
 const data = JSON.parse(fs.readFileSync(path.join(ROOT, "data/mode_all.json"), "utf8"));
-const chart = JSON.parse(fs.readFileSync(path.join(ROOT, "data/type_efficacy.json"), "utf8"));
+const efficacyRaw = JSON.parse(fs.readFileSync(path.join(ROOT, "data/type_efficacy.json"), "utf8"));
+const chart = efficacyRaw.byGen ? efficacyRaw.byGen["6"] || efficacyRaw.latest : efficacyRaw;
+const chartGen1 = efficacyRaw.byGen ? efficacyRaw.byGen["1"] : null;
+const chartGen2 = efficacyRaw.byGen ? efficacyRaw.byGen["2"] : null;
 DataStore = { typeEfficacy: chart };
 
 const TYPE = {
@@ -215,3 +218,36 @@ if (failed) {
   process.exit(1);
 }
 console.log("\nAll type efficacy regression checks passed.");
+
+/** 過去世代チャート（type_efficacy_past 由来） */
+if (chartGen1 && chartGen2) {
+  const PAST_SPOTS = [
+    [chartGen1, 15, 10, 1, "gen1 こおり→ほのお = 等倍"],
+    [chartGen2, 15, 10, 0.5, "gen2 こおり→ほのお = 今一つ"],
+    [chartGen1, 8, 14, 0, "gen1 ゴースト→エスパー = 無効"],
+    [chartGen2, 8, 14, 2, "gen2 ゴースト→エスパー = 抜群"],
+    [chartGen1, 4, 7, 2, "gen1 どく→むし = 抜群"],
+    [chartGen2, 4, 7, 1, "gen2 どく→むし = 等倍"],
+    [chartGen1, 7, 4, 2, "gen1 むし→どく = 抜群"],
+    [chartGen2, 7, 4, 0.5, "gen2 むし→どく = 今一つ"],
+    [chartGen2, 8, 9, 0.5, "gen2-5 ゴースト→はがね = 今一つ"],
+    [chart, 8, 9, 1, "gen6+ ゴースト→はがね = 等倍"],
+    [chartGen2, 17, 9, 0.5, "gen2-5 あく→はがね = 今一つ"],
+    [chart, 17, 9, 1, "gen6+ あく→はがね = 等倍"],
+  ];
+  let pastFailed = 0;
+  for (const [c, atk, def, exp, label] of PAST_SPOTS) {
+    const got = c[String(atk)][String(def)];
+    if (got !== exp) {
+      console.error(`FAIL past ${label}: got ${got} expect ${exp}`);
+      pastFailed++;
+    } else {
+      console.log(`OK past ${label}`);
+    }
+  }
+  if (pastFailed) {
+    console.error(`\n${pastFailed} past type efficacy check(s) failed`);
+    process.exit(1);
+  }
+  console.log("All past generation type efficacy checks passed.");
+}

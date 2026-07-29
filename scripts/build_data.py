@@ -60,11 +60,18 @@ PIKACHU_SPECIES_ID = 25
 # Gen7 以前は赤緑→金銀など世代間引き継ぎを許容し、従来どおり全世代 OR 継承
 INTRO_GEN_CUT_FROM = 8
 
+# LEGENDS アルセウスの version_group_id（スタンダードではこの VG 専用技のみ除外）
+ARCEUS_VG = 24
+
+# 進化前からの技継承を行わない例外（サトシゲッコウガ固有）
+NO_INHERITANCE_PIDS = frozenset({10117})
+
 # 特性違いのみの重複フォルム（ゲーム上は1エントリに統合）
 EXCLUDED_DUPLICATE_PIDS = frozenset({10116, 10119, 10118})
 
+# standard を既定レギュ、all（全作品）は世代指定の末尾に置く
 MODES = [
-    {"key": "all", "label": "全ポケモン全わざ", "max_gen": 9, "vgs": None},
+    {"key": "standard", "label": "スタンダード", "max_gen": 9, "vgs": None, "exclude_vgs": [ARCEUS_VG]},
     {"key": "gen1", "label": "1世代", "max_gen": 1, "vgs": [2]},
     {"key": "gen2", "label": "2世代", "max_gen": 2, "vgs": [4]},
     {"key": "gen3", "label": "3世代", "max_gen": 3, "vgs": [6, 7]},
@@ -79,6 +86,7 @@ MODES = [
     {"key": "gen9", "label": "9世代", "max_gen": 9, "vgs": [25, 26, 27]},
     {"key": "za", "label": "ZA", "max_gen": 9, "vgs": [30]},
     {"key": "champions", "label": "チャンピオンズ", "max_gen": 9, "vgs": [32]},
+    {"key": "all", "label": "全作品（ZA除く）", "max_gen": 9, "vgs": None},
 ]
 
 
@@ -526,23 +534,38 @@ def main() -> None:
         vgs: list[int] | None,
         *,
         min_gen: int | None = None,
+        exclude_vgs: list[int] | None = None,
     ) -> tuple[int, ...]:
+        exclude = set(exclude_vgs or [])
         if vgs is None:
-            if min_gen is not None:
+            if min_gen is not None or exclude:
                 merged: set[int] = set()
                 for vg, gen in vg_to_generation.items():
-                    if gen >= min_gen:
-                        merged |= moves_by_vg.get(vg, {}).get(pid, set())
+                    if vg in exclude:
+                        continue
+                    if min_gen is not None and gen < min_gen:
+                        continue
+                    merged |= moves_by_vg.get(vg, {}).get(pid, set())
                 return tuple(sorted(merged))
             return tuple(sorted(all_moves_by_pokemon.get(pid, set())))
         merged = set()
         for vg in vgs:
+            if vg in exclude:
+                continue
             merged |= moves_by_vg.get(vg, {}).get(pid, set())
         return tuple(sorted(merged))
 
-    def moves_with_inheritance(pid: int, vgs: list[int] | None) -> tuple[int, ...]:
+    def moves_with_inheritance(
+        pid: int,
+        vgs: list[int] | None,
+        *,
+        exclude_vgs: list[int] | None = None,
+    ) -> tuple[int, ...]:
+        # サトシゲッコウガ: 進化前継承なし（固有仕様）
+        if pid in NO_INHERITANCE_PIDS:
+            return moves_for_vgs(pid, vgs, exclude_vgs=exclude_vgs)
         min_gen = inheritance_min_gen(pid, vgs)
-        merged = set(moves_for_vgs(pid, vgs))
+        merged = set(moves_for_vgs(pid, vgs, exclude_vgs=exclude_vgs))
         node = pid_to_node[pid]
         seen: set[int] = {node}
         stack = list(parents.get(node, []))
@@ -551,16 +574,22 @@ def main() -> None:
             if ancestor in seen:
                 continue
             seen.add(ancestor)
-            merged |= set(moves_for_vgs(ancestor, vgs, min_gen=min_gen))
+            merged |= set(
+                moves_for_vgs(ancestor, vgs, min_gen=min_gen, exclude_vgs=exclude_vgs)
+            )
             stack.extend(parents.get(ancestor, []))
         if form_is_mega.get(pid):
             sid = pokemon_species.get(pid)
             base_pid = default_pokemon.get(sid) if sid is not None else None
             if base_pid is not None and base_pid != pid:
-                base_moves = moves_for_vgs(base_pid, vgs, min_gen=min_gen)
+                base_moves = moves_for_vgs(
+                    base_pid, vgs, min_gen=min_gen, exclude_vgs=exclude_vgs
+                )
                 # PokeAPI に Gen9 以降の習得表が無いベース（ゼラオラ等）は全世代 OR で補完
                 if not base_moves:
-                    base_moves = moves_for_vgs(base_pid, vgs, min_gen=None)
+                    base_moves = moves_for_vgs(
+                        base_pid, vgs, min_gen=None, exclude_vgs=exclude_vgs
+                    )
                 merged |= set(base_moves)
         return tuple(sorted(merged))
 
@@ -612,7 +641,9 @@ def main() -> None:
             tuple(resolve_types(pid, mode["max_gen"])),
             tuple(resolve_abilities(pid, mode["max_gen"])),
             tuple(sorted(resolve_stats(pid, mode["max_gen"]).items())),
-            moves_with_inheritance(pid, mode["vgs"]),
+            moves_with_inheritance(
+                pid, mode["vgs"], exclude_vgs=mode.get("exclude_vgs")
+            ),
         )
 
     def tas_signature(pid: int, mode: dict) -> tuple:
@@ -635,7 +666,11 @@ def main() -> None:
             "t": resolve_types(pid, mode["max_gen"]),
             "a": resolve_abilities(pid, mode["max_gen"]),
             "s": resolve_stats(pid, mode["max_gen"]),
-            "m": list(moves_with_inheritance(pid, mode["vgs"])),
+            "m": list(
+                moves_with_inheritance(
+                    pid, mode["vgs"], exclude_vgs=mode.get("exclude_vgs")
+                )
+            ),
             "e": pid_to_lines[pid],
             "g": sorted(species_egg_groups.get(sid, [])),
         }
@@ -679,12 +714,43 @@ def main() -> None:
         if mid in learnable_move_ids
     ]
 
-    type_efficacy: dict[str, dict[str, float]] = {}
+    # 現行（第6世代以降）チャート + type_efficacy_past で世代差分を復元
+    type_efficacy_latest: dict[str, dict[str, float]] = {}
     for row in read_csv("type_efficacy.csv"):
         atk = str(to_int(row["damage_type_id"]))
         defense = str(to_int(row["target_type_id"]))
         factor = to_int(row["damage_factor"]) / 100.0
-        type_efficacy.setdefault(atk, {})[defense] = factor
+        type_efficacy_latest.setdefault(atk, {})[defense] = factor
+
+    efficacy_past: list[tuple[int, str, str, float]] = []
+    for row in read_csv("type_efficacy_past.csv"):
+        efficacy_past.append(
+            (
+                to_int(row["generation_id"]),
+                str(to_int(row["damage_type_id"])),
+                str(to_int(row["target_type_id"])),
+                to_int(row["damage_factor"]) / 100.0,
+            )
+        )
+
+    def chart_for_generation(gen: int) -> dict[str, dict[str, float]]:
+        chart: dict[str, dict[str, float]] = {
+            atk: dict(defs) for atk, defs in type_efficacy_latest.items()
+        }
+        for last_gen, atk, defense, factor in efficacy_past:
+            if gen <= last_gen:
+                chart.setdefault(atk, {})[defense] = factor
+        return chart
+
+    # 1: 第1世代 / 2: 第2〜5世代 / 6: 第6世代以降（現行）
+    type_efficacy = {
+        "latest": type_efficacy_latest,
+        "byGen": {
+            "1": chart_for_generation(1),
+            "2": chart_for_generation(2),
+            "6": chart_for_generation(6),
+        },
+    }
 
     with (OUT_DIR / "types.json").open("w", encoding="utf-8") as f:
         json.dump(types_json, f, ensure_ascii=False, separators=(",", ":"))
@@ -727,6 +793,7 @@ def main() -> None:
             "label": mode["label"],
             "file": mode_file.name,
             "count": len(pokemon_list),
+            "max_gen": mode["max_gen"],
         })
         print(f"OK mode_{mode['key']}.json: {len(pokemon_list)} entries")
 

@@ -426,25 +426,32 @@ body {
   width: auto;
   flex: 1 1 auto;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   border: none;
   border-radius: 0;
   box-shadow: none;
   font-size: 0.85rem;
-  line-height: 1.6;
+  line-height: 1.65;
   color: var(--text-muted);
+  /* 左右・下の読みやすさ用余白（ヘッダとは別） */
+  padding: 0.85rem 1.15rem 1.5rem;
+}
+
+.rules-overlay-inner {
+  max-width: min(92vw, 440px);
 }
 
 .rules-box-overlay p {
-  margin: 0 0 0.5rem;
+  margin: 0 0 0.65rem;
 }
 
 .rules-box-overlay ul {
-  margin: 0.5rem 0;
-  padding-left: 1.25rem;
+  margin: 0.5rem 0 0.75rem;
+  padding-left: 1.35rem;
 }
 
 .rules-box-overlay li {
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.35rem;
 }
 
 .rules-box-overlay .rules-detail {
@@ -508,6 +515,50 @@ body {
   gap: 1rem;
   width: min(92vw, 340px);
   margin-bottom: 2rem;
+}
+
+.mode-standard-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.mode-standard-wrap .btn-mode-standard {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ルール選択ボタンと紛らわしくない、おまけ程度の小さなヘルプ印（主ボタンの右） */
+.btn-standard-help {
+  flex-shrink: 0;
+  box-sizing: border-box;
+  width: 1.15rem;
+  height: 1.15rem;
+  padding: 0;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1;
+  border-radius: 50%;
+  border: 1px solid #7dd3fc;
+  background: rgba(255, 255, 255, 0.55);
+  color: var(--text-muted);
+  opacity: 0.75;
+  cursor: help;
+  touch-action: manipulation;
+  box-shadow: none;
+}
+
+.btn-standard-help:hover,
+.btn-standard-help:focus-visible {
+  opacity: 1;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.9);
+  outline: none;
 }
 
 .btn-mode {
@@ -1405,6 +1456,15 @@ tr.condition-excluded .btn-op.active {
   background: rgba(0, 0, 0, 0.4);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+}
+
+/* 検索: キーボード表示時は JS が visualViewport に合わせて top/height を上書き */
+#overlay-search {
+  overscroll-behavior: contain;
+}
+
+#overlay-search .overlay-inner {
+  max-height: min(70vh, 70dvh);
 }
 
 .overlay.active {

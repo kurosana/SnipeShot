@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <title>ねらいうちゲーム</title>
   <meta name="description" content="ポケモンを条件で絞り込むねらいうちゲーム">
   <link rel="icon" href="Img/favicon.ico" sizes="any">
@@ -26,7 +26,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=2.5.5">
+  <link rel="stylesheet" href="css/style.css?v=3.0.3">
 </head>
 <body>
   <div id="app">
@@ -115,7 +115,10 @@
       <div class="setup-inner">
         <h1 class="setup-title">ルール選択</h1>
         <div class="mode-buttons">
-          <button type="button" class="btn-mode btn-mode-all" id="btn-mode-all">全ポケモン全わざ</button>
+          <div class="mode-standard-wrap">
+            <button type="button" class="btn-mode btn-mode-standard" id="btn-mode-standard">スタンダード</button>
+            <button type="button" class="btn-standard-help" id="btn-standard-help" aria-label="スタンダードの説明">？</button>
+          </div>
           <div class="mode-gen-wrap">
             <button type="button" class="btn-mode btn-mode-gen" id="btn-mode-gen">世代指定</button>
             <select id="select-generation" class="select-generation" aria-label="世代を選択" disabled>
@@ -295,9 +298,9 @@
     </div>
   </div>
 
-  <script src="js/config.js?v=1.6.0"></script>
-  <script src="js/data.js?v=1.6.0"></script>
-  <script src="js/filter.js?v=1.6.0"></script>
-  <script src="js/app.js?v=1.6.0"></script>
+  <script src="js/config.js?v=3.0.0"></script>
+  <script src="js/data.js?v=3.0.0"></script>
+  <script src="js/filter.js?v=3.0.0"></script>
+  <script src="js/app.js?v=3.0.0"></script>
 </body>
 </html>
