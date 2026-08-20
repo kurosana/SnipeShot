@@ -59,16 +59,20 @@ body {
 }
 
 /* ========== スタート画面 ========== */
+#screen-start,
+#screen-setup {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(125, 211, 252, 0.55), transparent 70%),
+    radial-gradient(ellipse 60% 40% at 100% 30%, rgba(186, 230, 253, 0.45), transparent 55%),
+    linear-gradient(180deg, #e0f2fe 0%, var(--bg) 38%, #f8fbff 100%);
+}
+
 #screen-start {
   display: none;
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   position: relative;
-  background:
-    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(125, 211, 252, 0.55), transparent 70%),
-    radial-gradient(ellipse 60% 40% at 100% 30%, rgba(186, 230, 253, 0.45), transparent 55%),
-    linear-gradient(180deg, #e0f2fe 0%, var(--bg) 38%, #f8fbff 100%);
 }
 
 #screen-start.active {
@@ -490,6 +494,7 @@ body {
 
 /* ========== ルール選択 ========== */
 #screen-setup {
+  overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   position: relative;
