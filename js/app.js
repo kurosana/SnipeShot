@@ -88,6 +88,38 @@
   function showScreen(name) {
     Object.values(screens).forEach((el) => el.classList.remove("active"));
     screens[name].classList.add("active");
+    if (name === "start") fitOfuseSupportTips();
+  }
+
+  function fitOfuseSupportTips() {
+    document.querySelectorAll(".ofuse-support-tips").forEach((host) => {
+      const text = host.querySelector(".ofuse-support-tips-text");
+      if (!text) return;
+      const lines = text.querySelectorAll(".ofuse-support-line");
+      if (!lines.length) return;
+      text.style.fontSize = "";
+      const avail = text.clientWidth;
+      if (!avail) return;
+      let need = 0;
+      lines.forEach((line) => {
+        need = Math.max(need, line.scrollWidth);
+      });
+      if (need <= avail) return;
+      const current = parseFloat(window.getComputedStyle(text).fontSize);
+      text.style.fontSize = Math.max(11, current * (avail / need) * 0.98) + "px";
+    });
+  }
+
+  function initOfuseSupportTips() {
+    const hosts = document.querySelectorAll(".ofuse-support-tips");
+    if (!hosts.length) return;
+    fitOfuseSupportTips();
+    if (typeof ResizeObserver !== "undefined") {
+      const ro = new ResizeObserver(fitOfuseSupportTips);
+      hosts.forEach((host) => ro.observe(host));
+    } else {
+      window.addEventListener("resize", fitOfuseSupportTips);
+    }
   }
 
   function confirmDialog(message) {
@@ -1278,5 +1310,6 @@
     $("#dialog-no").click();
   });
 
+  initOfuseSupportTips();
   init();
 })();
