@@ -66,6 +66,15 @@ ARCEUS_VG = 24
 # 進化前からの技継承を行わない例外（サトシゲッコウガ固有）
 NO_INHERITANCE_PIDS = frozenset({10117})
 
+# PokeAPI の ability_names.csv に日本語が無い新特性。
+# ja が入ったら setdefault により自動でAPI名が優先される。入ったことを確認したらこの辞書を削除する。
+# 対応メモ: Trash/PokeAPI待ち_特性名とチャンピオンズメガ技.md
+ABILITY_JA_FALLBACK = {
+    312: "うなぎのぼり",  # eelevate（メガシビルドン）
+    313: "ほのおのたてがみ",  # fire-mane（メガカエンジシ）
+    314: "はどうのぼうご",  # aura-guard（メガルカリオZ）
+}
+
 # 特性違いのみの重複フォルム（ゲーム上は1エントリに統合）
 EXCLUDED_DUPLICATE_PIDS = frozenset({10116, 10119, 10118})
 
@@ -380,6 +389,9 @@ def main() -> None:
     for row in read_csv("ability_names.csv"):
         if to_int(row["local_language_id"]) == JA_LANG:
             ability_names[to_int(row["ability_id"])] = row["name"]
+    # 日本語名がCSVに無い間だけ補完する。API側に ja が来たら上書きしない。
+    for aid, name in ABILITY_JA_FALLBACK.items():
+        ability_names.setdefault(aid, name)
 
     move_names: dict[int, str] = {}
     for row in read_csv("move_names.csv"):
@@ -624,7 +636,8 @@ def main() -> None:
                     species_set.add(sid)
         return species_set
 
-    def candidate_pids_for_species(sid: int, vgs: list[int] | None) -> list[int]:
+    def candidate_pids_for_species(sid: int, mode: dict) -> list[int]:
+        vgs = mode["vgs"]
         if vgs is None:
             return [pid for pid in species_to_pids.get(sid, []) if pid not in excluded_pokemon]
         found: set[int] = set()
@@ -634,6 +647,18 @@ def main() -> None:
                     continue
                 if pokemon_species.get(pid) == sid:
                     found.add(pid)
+        # チャンピオンズ限定: 習得表が無いメガは、メガシンカ前（デフォルト形態）が
+        # そのVGに技を持つときだけ候補に足す。技そのものは moves_with_inheritance が
+        # ベース形態から埋める。PokeAPI に当該メガの champions 習得が来たら、
+        # found に既に入るのでこの補完は空振りになる。削除条件は Trash メモ参照。
+        if mode.get("key") == "champions":
+            base_pid = default_pokemon.get(sid)
+            if base_pid is not None and moves_for_vgs(base_pid, vgs):
+                for pid in species_to_pids.get(sid, []):
+                    if pid in excluded_pokemon or pid in found:
+                        continue
+                    if form_is_mega.get(pid):
+                        found.add(pid)
         return sorted(found)
 
     def entry_signature(pid: int, sid: int, mode: dict) -> tuple:
@@ -680,14 +705,16 @@ def main() -> None:
         if default_pid is None:
             return []
 
-        candidates = candidate_pids_for_species(sid, mode["vgs"])
+        candidates = candidate_pids_for_species(sid, mode)
         if not candidates and mode["vgs"] is None:
             candidates = [default_pid]
 
         by_sig: dict[tuple, int] = {}
         for pid in candidates:
+            # チャンピオンズで習得表が無いメガは、ここで落とさずベースの技継承に回す
             if mode["vgs"] is not None and not moves_for_vgs(pid, mode["vgs"]):
-                continue
+                if not (mode.get("key") == "champions" and form_is_mega.get(pid)):
+                    continue
             sig = merge_key(pid, sid, mode)
             if sig not in by_sig:
                 by_sig[sig] = pid
